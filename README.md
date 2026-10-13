@@ -16,7 +16,8 @@ As pipelines rodam **uma de cada vez**. Para escrever na planilha, o serviço l�
 | Variável | Obrigatória | Padrão |
 |---|---|---|
 | `MEDULAR_API_KEY` | sim | |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | sim | JSON cru ou em base64 |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | sim* | JSON cru ou em base64 |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | sim* | alternativa à conta de serviço (OAuth de usuário) |
 | `MEDULAR_API_URL` | não | `https://medular.atenderbem.com/int/getPipeOpportunities` |
 | `MEDULAR_QUEUE_ID` | não | `25` |
 | `SPREADSHEET_ID` | não | `17VKwnesDgkPYrres2DFyE4oxLlt7qX3DNzZTcGQDgOE` |
@@ -24,6 +25,8 @@ As pipelines rodam **uma de cada vez**. Para escrever na planilha, o serviço l�
 | `CRON_SCHEDULE` | não | `0 5,14 * * *` (5h e 14h) |
 | `TZ_APP` | não | `America/Sao_Paulo` (fuso do cron e das datas) |
 | `PORT` | não | `3000` |
+
+\* Informe a conta de serviço **ou** as três variáveis de OAuth. Se as duas estiverem definidas, vale a conta de serviço.
 
 Veja o `.env.example`. Se uma variável obrigatória faltar, o serviço encerra na inicialização com uma mensagem clara.
 
@@ -38,6 +41,17 @@ Veja o `.env.example`. Se uma variável obrigatória faltar, o serviço encerra 
    base64 -w0 conta-servico.json        # Linux
    [Convert]::ToBase64String([IO.File]::ReadAllBytes("conta-servico.json"))   # PowerShell
    ```
+
+## Alternativa: OAuth de usuário
+
+O serviço grava na planilha em nome de uma pessoa, usando um OAuth Client ID (`...apps.googleusercontent.com` + `GOCSPX-...`).
+
+1. No Google Cloud Console, em **APIs e serviços → Credenciais**, abra o OAuth Client ID. Se o tipo for **Aplicativo da Web**, adicione `http://localhost:53682/oauth2callback` em *URIs de redirecionamento autorizados*. Se for **App para computador**, não é preciso configurar nada.
+2. Ative a **Google Sheets API** no mesmo projeto.
+3. Ponha `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`, rode `npm run build && npm run gerar-token`, abra a URL impressa e entre com uma conta que tenha acesso de Editor à planilha. O refresh token é gravado no `.env`.
+4. No deploy, defina as três variáveis `GOOGLE_*`.
+
+**Atenção:** se a *tela de consentimento OAuth* estiver com status **Testando**, o Google invalida o refresh token em **7 dias**, e o sync para de funcionar com o erro `invalid_grant`. Para uso contínuo, publique o app (status **Em produção**) ou use a conta de serviço.
 
 ## Rotas
 
@@ -65,6 +79,7 @@ npm install
 npm test          # testes com node:test
 npm run build     # compila para dist/
 npm start         # node dist/main.js (lê as variáveis do ambiente)
+npm run dev       # build + roda lendo o .env local
 ```
 
 Os logs saem em JSON (Fastify/pino). Ao fim de cada pipeline, o serviço registra uma linha `pipeline sincronizada` com `lidos`, `atualizados`, `inseridos` e `duracaoMs`.

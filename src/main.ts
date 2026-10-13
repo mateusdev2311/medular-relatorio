@@ -21,7 +21,7 @@ const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
 const sync = new Sincronizador(PIPELINES, {
   buscar: (pipelineId) =>
     buscarOportunidades({ url: config.medularApiUrl, apiKey: config.medularApiKey, queueId: config.medularQueueId }, pipelineId),
-  sheets: new SheetsClient(config.spreadsheetId, config.contaServico),
+  sheets: new SheetsClient(config.spreadsheetId, config.google),
   agora: agoraFormatado,
   log: app.log,
 });
@@ -75,7 +75,7 @@ app
   .listen({ host: '0.0.0.0', port: config.port })
   .then(() => {
     app.log.info(
-      { cron: config.cronSchedule, tz: config.tz, proximaExecucao: cron.nextRun()?.toISOString(), syncTokenAtivo: Boolean(config.syncToken) },
+      { google: config.google.tipo, cron: config.cronSchedule, tz: config.tz, proximaExecucao: cron.nextRun()?.toISOString(), syncTokenAtivo: Boolean(config.syncToken) },
       'medular-sync pronto',
     );
   })

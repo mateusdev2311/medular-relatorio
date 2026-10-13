@@ -1,5 +1,5 @@
-import { JWT } from 'google-auth-library';
-import type { ContaServico } from './config';
+import { JWT, OAuth2Client } from 'google-auth-library';
+import type { CredencialGoogle } from './config';
 import type { Linha } from './format';
 import { abaA1, indicesDoCabecalho, letraColuna, planejarUpsert, type RangeValores } from './upsert-plan';
 
@@ -35,11 +35,18 @@ class ErroSheets extends Error {
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class SheetsClient {
-  private readonly jwt: JWT;
+  /** Os dois clientes renovam o access token sozinhos quando ele expira. */
+  private readonly auth: JWT | OAuth2Client;
   private titulos: Map<number, string> | null = null;
 
-  constructor(private readonly spreadsheetId: string, conta: ContaServico) {
-    this.jwt = new JWT({ email: conta.client_email, key: conta.private_key, scopes: [ESCOPO] });
+  constructor(private readonly spreadsheetId: string, credencial: CredencialGoogle) {
+    if (credencial.tipo === 'conta-servico') {
+      this.auth = new JWT({ email: credencial.conta.client_email, key: credencial.conta.private_key, scopes: [ESCOPO] });
+    } else {
+      const { clientId, clientSecret, refreshToken } = credencial.oauth;
+      this.auth = new OAuth2Client({ clientId, clientSecret });
+      this.auth.setCredentials({ refresh_token: refreshToken });
+    }
   }
 
   /** Esquece os títulos das abas (chamado no início de cada sync, caso uma aba tenha sido renomeada). */
@@ -75,7 +82,7 @@ export class SheetsClient {
 
     for (let i = 0; i < plano.atualizacoes.length; i += LINHAS_POR_LOTE) {
       const data: RangeValores[] = plano.atualizacoes.slice(i, i + LINHAS_POR_LOTE).flat();
-      await this.req(':batchUpdate', {
+      await this.req('/values:batchUpdate', {
         method: 'POST',
         body: { valueInputOption: 'USER_ENTERED', data },
         idempotente: true,
@@ -112,7 +119,7 @@ export class SheetsClient {
 
     for (let tentativa = 1; ; tentativa++) {
       try {
-        const { token } = await this.jwt.getAccessToken();
+        const { token } = await this.auth.getAccessToken();
         const res = await fetch(url, {
           method,
           headers: {

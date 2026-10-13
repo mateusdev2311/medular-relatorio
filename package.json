@@ -10,6 +10,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "dev": "npm run build && node --env-file=.env dist/main.js",
+    "gerar-token": "node --env-file=.env dist/gerar-token.js",
     "test": "tsc -p tsconfig.test.json && node --test dist-test/test/*.test.js"
   },
   "dependencies": {
