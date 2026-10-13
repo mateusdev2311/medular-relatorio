@@ -1,0 +1,24 @@
+{
+  "name": "medular-sync",
+  "version": "1.0.0",
+  "description": "Sincroniza oportunidades das pipelines do CRM Medular com a planilha do Google Sheets (substitui o workflow n8n \"Relatorio Medular\").",
+  "private": true,
+  "main": "dist/main.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/test/*.test.js"
+  },
+  "dependencies": {
+    "@types/luxon": "^3.7.6",
+    "@types/node": "^20.19.43",
+    "croner": "^10.0.1",
+    "fastify": "^5.12.7",
+    "google-auth-library": "^10.9.1",
+    "luxon": "^3.7.2",
+    "typescript": "^7.0.2"
+  }
+}
