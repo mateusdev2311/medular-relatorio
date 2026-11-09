@@ -1,7 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
+import path from 'node:path';
 import { Cron } from 'croner';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { carregarConfig, type Config } from './config';
+import { registrarExtensao } from './extensao';
 import { agoraFormatado } from './format';
 import { buscarOportunidades } from './medular';
 import { PIPELINES } from './pipelines';
@@ -16,11 +18,14 @@ try {
   process.exit(1);
 }
 
-const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
+// trustProxy: atrás do proxy do deploy, protocolo e host públicos vêm dos cabeçalhos X-Forwarded-*.
+const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, trustProxy: true });
+
+const buscarCRM = (pipelineId: number) =>
+  buscarOportunidades({ url: config.medularApiUrl, apiKey: config.medularApiKey, queueId: config.medularQueueId }, pipelineId);
 
 const sync = new Sincronizador(PIPELINES, {
-  buscar: (pipelineId) =>
-    buscarOportunidades({ url: config.medularApiUrl, apiKey: config.medularApiKey, queueId: config.medularQueueId }, pipelineId),
+  buscar: buscarCRM,
   sheets: new SheetsClient(config.spreadsheetId, config.google),
   agora: agoraFormatado,
   log: app.log,
@@ -60,6 +65,13 @@ app.post<{ Params: { pipeline: string } }>('/sync/:pipeline', { preHandler: exig
   if (!p) return reply.code(404).send({ erro: 'pipeline desconhecida', validas: PIPELINES.map((x) => x.nome) });
   if (!sync.disparar('http', [p])) return reply.code(409).send({ erro: 'já existe uma sincronização em andamento' });
   return reply.code(202).send({ aceito: true, pipelines: [p.nome] });
+});
+
+registrarExtensao(app, {
+  pasta: path.resolve(__dirname, '..', 'extensao-relatorio'),
+  token: config.extensaoToken,
+  urlPublica: config.urlPublica,
+  buscar: buscarCRM,
 });
 
 async function encerrar(sinal: string) {

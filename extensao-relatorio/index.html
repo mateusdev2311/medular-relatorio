@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="medular-api" content="__API_BASE__">
+<title>Relatório Medular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #1285A0;
+    --teal-escuro: #0E6C83;
+    --teal-apagado: #CFE6EC;
+    --card: #F3F3F3;
+    --texto: #434343;
+    --texto-forte: #232323;
+    --titulo-card: #77797B;
+    --valor-card: #3C4043;
+    --verde: #128937;
+    --vermelho: #C5221F;
+    --cinza: #5F6368;
+    --apagado: #BDBDBD;
+    --borda: #DADCE0;
+    --nav-fundo: #F8F9FB;
+    --nav-ativo: #C2E7FF;
+    --nav-ativo-texto: #0B57D0;
+    --azul-check: #1A73E8;
+    --sombra: 0 1px 3px rgba(60, 64, 67, .3), 0 1px 2px rgba(60, 64, 67, .15);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #fff; color: var(--texto); font-family: Arial, Helvetica, sans-serif; }
+  button { font: inherit; }
+
+  .app { display: flex; height: 100%; }
+
+  /* ── Navegação entre páginas (a lista lateral do Looker) ── */
+  .nav { width: 210px; flex: none; background: var(--nav-fundo); border-right: 1px solid #E3E5E8; display: flex; flex-direction: column; transition: width .15s; }
+  .nav.recolhida { width: 44px; }
+  .nav-lista { list-style: none; margin: 0; padding: 16px 8px 0 0; flex: 1; }
+  .nav-lista button { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--cinza); font-size: 13px; padding: 12px 19px; border-radius: 0 20px 20px 0; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-lista button:hover { background: #EEF0F3; }
+  .nav-lista button[aria-current="page"] { background: var(--nav-ativo); color: var(--nav-ativo-texto); font-weight: 700; }
+  .nav.recolhida .nav-lista { visibility: hidden; }
+  .nav-rodape { border-top: 1px solid #E3E5E8; padding: 6px; display: flex; justify-content: flex-end; }
+  .nav-recolher { border: 0; background: none; cursor: pointer; color: var(--cinza); width: 32px; height: 32px; border-radius: 50%; font-size: 18px; }
+  .nav-recolher:hover { background: #EEF0F3; }
+  .nav.recolhida .nav-recolher { transform: rotate(180deg); }
+
+  /* ── Conteúdo ── */
+  .conteudo { flex: 1; overflow: auto; position: relative; }
+  .pagina { max-width: 1350px; margin: 0 auto; padding: 18px 8px 40px 18px; }
+
+  .topo { display: grid; grid-template-columns: 190px 1fr 270px; gap: 16px; align-items: start; padding-right: 10px; }
+  .logo img { width: 175px; display: block; margin-top: 4px; }
+  .filtros { display: flex; flex-direction: column; gap: 34px; }
+  .filtros-linha { display: flex; gap: 24px; flex-wrap: wrap; }
+  .lado { display: flex; flex-direction: column; gap: 34px; align-items: stretch; }
+
+  .ctrl { width: 186px; height: 45px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px 0 27px; background: #fff; border: 0; border-radius: 4px; box-shadow: var(--sombra); color: var(--texto-forte); font-size: 16px; cursor: pointer; }
+  .ctrl:hover { box-shadow: 0 2px 6px rgba(60, 64, 67, .35); }
+  .ctrl .rotulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ctrl .seta { flex: none; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #333; }
+  .ctrl.ativo { box-shadow: inset 0 0 0 2px var(--teal), var(--sombra); }
+  .ctrl.data { width: 100%; padding-left: 16px; justify-content: center; font-size: 15px; }
+  .ctrl.data .rotulo { flex: 1; text-align: center; }
+  .btn-redefinir { height: 45px; border: 0; border-radius: 8px; background: var(--teal); color: #fff; font-family: Montserrat, Arial, sans-serif; font-size: 20px; cursor: pointer; box-shadow: var(--sombra); }
+  .btn-redefinir:hover { background: var(--teal-escuro); }
+  .info { display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 12px; color: var(--cinza); margin: 10px 10px 6px; min-height: 26px; }
+  .btn-atualizar { border: 1px solid var(--borda); background: #fff; border-radius: 14px; padding: 4px 12px; font-size: 12px; color: var(--cinza); cursor: pointer; }
+  .btn-atualizar:hover { background: #F1F3F4; }
+  .btn-atualizar:disabled { opacity: .5; cursor: default; }
+
+  /* ── Faixa de indicadores ── */
+  .faixa { background: var(--teal); border-radius: 40px; padding: 18px 24px; margin-left: -8px; display: flex; flex-direction: column; gap: 36px; align-items: center; }
+  .faixa-linha { display: flex; gap: 33px; flex-wrap: wrap; justify-content: center; }
+  .kpi { width: 191px; height: 88px; background: var(--card); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 4px; }
+  .kpi-titulo { font-size: 15px; color: var(--titulo-card); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .kpi-valor { font-size: 30px; color: var(--valor-card); line-height: 1.15; }
+  .kpi-delta { font-size: 15px; color: var(--cinza); }
+  .kpi-delta.sobe { color: var(--verde); }
+  .kpi-delta.desce { color: var(--vermelho); }
+
+  /* ── Blocos e seleção por clique ── */
+  .bloco { margin-top: 36px; position: relative; }
+  .limpar-selecao { position: absolute; top: -30px; left: 14px; z-index: 2; border: 0; background: none; cursor: pointer; color: var(--cinza); font-size: 20px; width: 30px; height: 30px; border-radius: 50%; }
+  .limpar-selecao:hover { background: #F1F3F4; color: var(--texto-forte); }
+  .grafico-barras { width: 100%; padding: 0 20px; }
+  .grafico-barras svg { display: block; width: 100%; overflow: visible; }
+  .barra { cursor: pointer; }
+  .barra:hover rect.corpo { fill: var(--teal-escuro); }
+  .barra.apagada rect.corpo { fill: var(--teal-apagado); }
+  .barra.apagada text.valor-dentro { fill: #fff; }
+
+  .tabela-caixa { background: #fff; border-radius: 6px; box-shadow: var(--sombra); overflow: hidden; margin: 0 8px; }
+  .tabela-rolagem { max-height: 290px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+  thead th { position: sticky; top: 0; background: var(--teal); color: #fff; font-weight: 700; font-size: 16px; padding: 8px 6px; cursor: pointer; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  thead th .ordem { font-size: 11px; margin-left: 4px; }
+  tbody tr { cursor: pointer; }
+  tbody td { padding: 8px 6px; text-align: center; color: #5F5F5F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:nth-child(even) td { background: #F8F9FA; }
+  tbody tr:hover td { background: #EEF3F5; }
+  tbody td.num { text-align: right; padding-right: 14px; }
+  table.com-selecao tbody td { color: var(--apagado); }
+  table.com-selecao tbody tr.selecionada td { color: #202124; font-weight: 700; }
+  tbody tr.vazia { cursor: default; }
+  .tabela-rodape { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; font-size: 14px; color: #5F5F5F; }
+  .paginacao { display: flex; align-items: center; gap: 14px; }
+  .paginacao button { border: 0; background: none; cursor: pointer; font-size: 20px; color: #3C4043; width: 28px; height: 28px; border-radius: 50%; }
+  .paginacao button:disabled { color: #C4C7C5; cursor: default; }
+  .paginacao button:not(:disabled):hover { background: #F1F3F4; }
+  .btn-csv { border: 0; background: none; color: var(--teal); cursor: pointer; font-size: 13px; padding: 4px 6px; border-radius: 4px; }
+  .btn-csv:hover { background: #E8F3F6; }
+
+  .pizzas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding: 0 12px; }
+  .pizza { position: relative; }
+  .pizza .limpar-selecao { top: 0; left: auto; right: 6px; }
+  .pizza h3 { margin: 0 0 14px; font-weight: 400; font-size: 20px; color: var(--texto-forte); }
+  .pizza-corpo { display: flex; align-items: center; gap: 18px; }
+  .pizza svg { flex: none; }
+  .fatia { cursor: pointer; stroke: #fff; stroke-width: 1; }
+  .fatia:hover { opacity: .85; }
+  .fatia.agrupada { cursor: default; }
+  .fatia.apagada { opacity: .25; }
+  .legenda { list-style: none; margin: 0; padding: 0; font-size: 13px; color: #3C4043; max-height: 240px; overflow: auto; min-width: 0; }
+  .legenda li { display: flex; align-items: flex-start; gap: 6px; margin: 3px 0; min-height: 15px; }
+  .legenda i { flex: none; width: 11px; height: 11px; border-radius: 50%; margin-top: 2px; }
+  .legenda span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .vazio-grafico { color: var(--cinza); font-size: 13px; padding: 40px 0; }
+
+  /* ── Popover de filtro (como o controle de lista do Looker) ── */
+  .pop { position: fixed; z-index: 30; background: #fff; border-radius: 4px; box-shadow: 0 4px 16px rgba(60, 64, 67, .3); width: 260px; max-height: 420px; display: flex; flex-direction: column; font-size: 12px; color: #3C4043; }
+  .pop[hidden] { display: none; }
+  .pop-cab { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 6px 16px; font-weight: 700; color: #202124; }
+  .pop-cab label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .pop-busca { margin: 4px 12px 6px; padding: 7px 8px 7px 28px; border: 0; border-bottom: 1px solid var(--borda); font: inherit; outline: none; background: no-repeat 6px 50% / 14px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%235F6368' d='M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 9.5 16a6.5 6.5 0 0 0 4.2-1.6l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z'/%3E%3C/svg%3E"); }
+  .pop-lista { overflow: auto; padding: 2px 0 8px; flex: 1; }
+  .pop-item { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 16px; cursor: pointer; }
+  .pop-item:hover { background: #F1F3F4; }
+  .pop-item .nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pop-item .qtd { color: #3C4043; }
+  .pop-item .so { display: none; border: 0; background: none; color: var(--azul-check); cursor: pointer; font-size: 12px; padding: 0; }
+  .pop-item:hover .so { display: inline; }
+  .pop-item:hover .qtd { display: none; }
+  .pop input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: var(--azul-check); flex: none; }
+  .pop-mais { padding: 6px 16px; color: var(--cinza); }
+  .pop-datas { padding: 14px; display: grid; gap: 10px; font-size: 13px; }
+  .pop-datas label { display: grid; gap: 4px; color: var(--cinza); }
+  .pop-datas input { padding: 7px 8px; border: 1px solid var(--borda); border-radius: 4px; font: inherit; }
+  .pop-datas .atalhos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pop-datas .atalhos button { border: 1px solid var(--borda); background: #fff; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  .pop-datas .atalhos button:hover { background: #F1F3F4; }
+  .pop-datas .aplicar { justify-self: end; border: 0; background: var(--teal); color: #fff; border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+  .pop.datas { width: 320px; }
+
+  .dica { position: fixed; z-index: 40; pointer-events: none; background: #fff; color: #202124; border-radius: 4px; box-shadow: 0 2px 8px rgba(60, 64, 67, .3); padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+  .dica[hidden] { display: none; }
+
+  .estado { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .75); z-index: 20; }
+  .estado[hidden] { display: none; }
+  .estado-caixa { text-align: center; color: var(--cinza); max-width: 460px; padding: 20px; }
+  .estado-caixa strong { display: block; color: var(--texto-forte); font-size: 16px; margin-bottom: 6px; }
+  .giro { width: 36px; height: 36px; margin: 0 auto 12px; border: 4px solid #D6EBF0; border-top-color: var(--teal); border-radius: 50%; animation: giro .8s linear infinite; }
+  @keyframes giro { to { transform: rotate(360deg); } }
+
+  @media (max-width: 1100px) {
+    .topo { grid-template-columns: 1fr; }
+    .pizzas { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="nav" id="nav" aria-label="Páginas do relatório">
+    <ul class="nav-lista" id="navLista"></ul>
+    <div class="nav-rodape"><button class="nav-recolher" id="navRecolher" title="Recolher" aria-label="Recolher a lista de páginas">‹</button></div>
+  </nav>
+  <main class="conteudo" id="conteudo">
+    <div class="pagina" id="pagina"></div>
+    <div class="estado" id="estado" hidden><div class="estado-caixa" id="estadoCaixa"></div></div>
+  </main>
+</div>
+<div class="pop" id="pop" hidden></div>
+<div class="dica" id="dica" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ══ Constantes ═════════════════════════════════════════════════════════════
+  var TZ = 'America/Sao_Paulo';
+  // Cores das fatias na ordem do tema padrão do Looker Studio; "Outros" agrupado fica lilás.
+  var CORES = ['#4285F4', '#F4A04F', '#A97DE0', '#B6C465', '#2AB5C8', '#F1C232', '#E56FB6', '#6061C0', '#DDB27C', '#8DD1F3'];
+  var COR_OUTROS = '#C3CADC';
+  var MESES = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
+
+  // Endereço do endpoint de dados: o serviço grava na meta ao entregar a página; sem isso, a pasta da própria página.
+  var API = (function () {
+    var m = document.querySelector('meta[name="medular-api"]'), v = m && m.getAttribute('content');
+    if (v && v.indexOf('__API_BASE__') < 0) return v.replace(/\/?$/, '/');
+    try { return new URL('./', location.href).href; } catch (_) { return './'; }
+  })();
+
+  // ══ Páginas: o que cada uma do relatório original mostra ═══════════════════
+  // etapas: id da etapa no CRM → rótulo das barras e do filtro "Etapas" (etapa fora da lista = "Outros").
+  // kpis: cartões da faixa (cada um soma as etapas listadas), na mesma distribuição de linhas do original.
+  var PAGINAS = [
+    {
+      id: 'interna', titulo: 'Autorização Interna',
+      periodo: function () { return { de: '2016-01-01', ate: fimDoMes(hoje()) }; },
+      etapas: { 83: 'Realizado', 93: 'Desistências', 8: 'Aut. Negada', 17: 'Encaminhado para Enfermagem', 7: 'Aut. em Processo',
+        89: 'Agendado', 13: 'Aut. Aprovada', 92: 'Resolver', 106: 'Faturamento' },
+      kpis: [
+        [['Aut. em Processo', [7]], ['Realizados', [83]], ['Aut. Aprovada', [13]], ['Enca. para Enfermagem', [17]], ['Agendado', [89]]],
+        [['Autorização Negada', [8]], ['Resolver', [92]], ['Desistências', [93]], ['Faturamento', [106]]]
+      ],
+      filtros: [
+        [['paciente', 'Paciente'], ['medico', 'Médico'], ['statusGuia', 'Status da Guia']],
+        [['convenio', 'Convênio'], ['procedimento', 'Procedimento'], ['etapa', 'Etapas']]
+      ],
+      blocos: [
+        { tipo: 'tabela', porPagina: 1000, colunas: [['paciente', 'Nome'], ['convenio', 'Convênio'], ['procedimento', 'Procedimento'], ['medico', 'Médico'], ['statusGuia', 'Guia'], ['etapa', 'Etapa do CRM']] },
+        { tipo: 'tabela', porPagina: 100, soComRealizacao: true, contagem: 'Record Count',
+          colunas: [['paciente', 'Nome'], ['convenio', 'Convênio'], ['procedimento', 'Procedimento'], ['medico', 'Médico'], ['statusGuia', 'Guia'], ['etapa', 'Etapa do CRM'], ['realizacao', 'Data da Realização']] },
+        { tipo: 'pizzas', itens: [['Procedimento por Quantidade', 'procedimento'], ['Médico por Quantidade', 'medico'], ['Convênio por Quantidade', 'convenio', true]] }
+      ]
+    },
+    {
+      id: 'externa', titulo: 'Autorização Externa',
+      periodo: function () { return { de: '2016-01-01', ate: fimDoMes(hoje()) }; },
+      etapas: { 84: 'Realizado', 91: 'Desistências', 78: 'Aut. Negada', 12: 'Aut. em Processo', 85: 'Agendado', 79: 'Enc. para Cirurgias',
+        11: 'Aut. em Pendente', 77: 'Aut. Aprovada', 107: 'Documentação Pendente' },
+      kpis: [
+        [['Realizados', [84]], ['Aut. em Processo', [12]], ['Aut. Aprovada', [77]], ['Enca. para Cirurgias', [79]], ['Documentação Pendente', [107]]],
+        [['Autorização Negada', [78]], ['Desistências', [91]], ['Resolver', [96]], ['Agendado', [85]]]
+      ],
+      filtros: [
+        [['medico', 'Médico'], ['convenio', 'Convênio'], ['hospital', 'Hospital'], ['etapa', 'Etapas']],
+        [['paciente', 'Paciente'], ['statusGuia', 'Status Guia'], ['procedimento', 'Procedimento']]
+      ],
+      blocos: [
+        { tipo: 'tabela', porPagina: 100, colunas: [['paciente', 'Nome'], ['hospital', 'Hospital'], ['procedimento', 'Procedimento'], ['medico', 'Médico'], ['statusGuia', 'Status da Guia'], ['etapa', 'Etapas']] },
+        { tipo: 'pizzas', itens: [['Procedimento por Quantidade', 'procedimento'], ['Médico por Quantidade', 'medico'], ['Convênio por Quantidade', 'convenio', true]] },
+        { tipo: 'tabela', porPagina: 1000, colunas: [['paciente', 'Nome'], ['convenio', 'Convênio'], ['procedimento', 'Procedimento'], ['medico', 'Médico'], ['statusGuia', 'Guia'], ['etapa', 'Etapa do CRM'], ['realizacao', 'Data da Realização']] }
+      ]
+    },
+    {
+      id: 'cirurgias', titulo: 'Cirurgias',
+      periodo: function () { return { de: '2016-01-01', ate: hoje() }; },
+      etapas: { 88: 'Realizado Clínica', 26: 'Orçamento Negado', 25: 'Cirurgia Realizada Hospital', 24: 'Orçamento Enviado',
+        108: 'Ordem Judicial em Andamento', 23: 'Solicitação Em Processo', 22: 'Solicitação Pendente', 87: 'Agendar Clínica', 90: 'Agendar Hospital' },
+      kpis: [
+        // "Cirurgias Não Realizadas" não corresponde a nenhuma etapa deste funil: no original também fica sempre em 0.
+        [['Realizada Hospital', [25]], ['Realizado Clínica', [88]], ['Cirurgias Não Realizadas', []], ['Orçamento Enviado', [24]], ['Ordem Judicial em Andamento', [108]]],
+        [['Agendado Hospital', [90]], ['Orçamento Negado', [26]], ['Solicitação em Processo', [23]], ['Agendar Clínica', [87]]]
+      ],
+      // O original tem dois controles "Hospital" no mesmo campo; aqui os dois compartilham a seleção.
+      filtros: [
+        [['paciente', 'Paciente'], ['cirurgiao', 'Cirurgião'], ['hospital', 'Hospital']],
+        [['hospital', 'Hospital'], ['procedimento', 'Procedimento'], ['etapa', 'Etapas']]
+      ],
+      blocos: [
+        { tipo: 'tabela', porPagina: 500, colunas: [['paciente', 'Nome'], ['procedimento', 'Procedimento'], ['cirurgiao', 'Cirurgião'], ['hospital', 'Hospital'], ['valor', 'Valor do Orçamento'], ['etapa', 'Etapa']] },
+        { tipo: 'pizzas', itens: [['Procedimento por Quantidade', 'procedimento'], ['Cirurgião por Quantidade', 'cirurgiao']] }
+      ]
+    },
+    {
+      id: 'clinica', titulo: 'Clínica',
+      periodo: function () { return { de: '2023-01-01', ate: hoje() }; },
+      etapas: { 98: 'Realizados', 100: 'Orçamento Enviado', 103: 'Orçamento Negado', 101: 'Agendar Clínica',
+        102: 'Cirurgias Não Realizadas', 99: 'Solicitação Em Processo', 97: 'Solicitação Pendente' },
+      kpis: [
+        [['Cirurgias Não Realizadas', [102]], ['Solicitação Em Processo', [99]], ['Orçamento Enviado', [100]]],
+        [['Agendar Clínica', [101]], ['Realizados', [98]], ['Orçamento Negado', [103]]]
+      ],
+      filtros: [
+        [['procedimento', 'Procedimento'], ['paciente', 'Paciente'], ['cirurgiao', 'Médico']],
+        [['etapa', 'Etapas']]
+      ],
+      blocos: [
+        { tipo: 'tabela', porPagina: 100, colunas: [['paciente', 'Paciente'], ['procedimento', 'Procedimento'], ['cirurgiao', 'Cirurgião'], ['valor', 'Valor Orçamento'], ['etapa', 'Etapas']] },
+        { tipo: 'pizzas', itens: [['Procedimento por Quantidade', 'procedimento'], ['Cirurgião por Quantidade', 'cirurgiao']] }
+      ]
+    }
+  ];
+
+  // ══ Datas ══════════════════════════════════════════════════════════════════
+  var fmtDia = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+  function hoje() { return fmtDia.format(new Date()); }
+  function paraUTC(dia) { var p = dia.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  function deUTC(ms) { return new Date(ms).toISOString().slice(0, 10); }
+  function somarDias(dia, n) { return deUTC(paraUTC(dia) + n * 86400000); }
+  function fimDoMes(dia) { var p = dia.split('-'); return deUTC(Date.UTC(+p[0], +p[1], 0)); }
+  function diaPorExtenso(dia) { var p = dia.split('-'); return (+p[2]) + ' de ' + MESES[+p[1] - 1] + ' de ' + p[0]; }
+  function periodoAnterior(per) {
+    var dias = Math.round((paraUTC(per.ate) - paraUTC(per.de)) / 86400000) + 1;
+    var ate = somarDias(per.de, -1);
+    return { de: somarDias(ate, -(dias - 1)), ate: ate };
+  }
+
+  // ══ Formatação ═════════════════════════════════════════════════════════════
+  var fmtInt = new Intl.NumberFormat('pt-BR');
+  var fmtPct = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+  var fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  // Valor vazio aparece como "null", como no Looker.
+  function exibir(v) { return v === '' || v === null || v === undefined ? 'null' : String(v); }
+  function semAcento(t) { var x = String(t || '').toLowerCase(); try { x = x.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (_) {} return x; }
+
+  // ══ Estado ═════════════════════════════════════════════════════════════════
+  var ctx = null;
+  var st = {
+    pagina: PAGINAS[0].id,
+    dados: {},        // página → { linhas, geradoEm }
+    carregando: {},   // página → promessa em andamento
+    filtros: {},      // página → { campo: [valores] } (campo ausente = todos)
+    interacoes: {},   // página → { gráfico: { campo: valor } } (seleção feita clicando num gráfico)
+    periodo: {},      // página → { de, ate }
+    tabelas: {},      // "página:bloco" → { ordem, sentido, pagina }
+    graficos: {}      // gráfico → dados da última renderização (para tratar o clique)
+  };
+  function paginaAtual() { return PAGINAS.filter(function (p) { return p.id === st.pagina; })[0]; }
+  function filtrosDe(p) { return st.filtros[p.id] || (st.filtros[p.id] = {}); }
+  function interacoesDe(p) { return st.interacoes[p.id] || (st.interacoes[p.id] = {}); }
+  function periodoDe(p) { return st.periodo[p.id] || (st.periodo[p.id] = p.periodo()); }
+
+  // ══ Rede ═══════════════════════════════════════════════════════════════════
+  // fetch direto ao medular-sync; se o sistema bloquear, usa o proxy oficial omni.http.request.
+  function http(url, headers) {
+    return fetch(url, { method: 'GET', headers: headers, credentials: 'omit' })
+      .then(function (r) { return r.text().then(function (t) { return { status: r.status, body: t }; }); })
+      .catch(function (err) {
+        if (!(window.omni && omni.http && typeof omni.http.request === 'function')) throw err;
+        return omni.http.request({ url: url, method: 'GET', headers: headers, timeout: 120000 });
+      });
+  }
+
+  var ERROS = {
+    401: 'O token da extensão não confere com o do servidor. Confira o campo "Token do relatório" na instalação.',
+    502: 'O servidor não conseguiu buscar os dados no CRM. Tente de novo em instantes.',
+    503: 'O endpoint de dados está desligado no servidor (defina EXTENSAO_TOKEN no medular-sync).'
+  };
+
+  function carregar(p, forcar) {
+    if (!forcar && st.dados[p.id]) return Promise.resolve(st.dados[p.id]);
+    if (st.carregando[p.id]) return st.carregando[p.id];
+    var token = String((ctx && ctx.config && ctx.config.token) || '').trim();
+    if (!token) return Promise.reject(new Error('O token do relatório não foi configurado. Preencha-o nas configurações da extensão.'));
+    var url = API + 'dados/' + encodeURIComponent(p.id) + (forcar ? '?atualizar=1' : '');
+    var promessa = http(url, { Authorization: 'Bearer ' + token, Accept: 'application/json' }).then(function (r) {
+      if (r.status >= 400) throw new Error(ERROS[r.status] || ('O servidor respondeu com erro ' + r.status + '.'));
+      var j;
+      try { j = JSON.parse(r.body); } catch (_) { throw new Error('O servidor devolveu uma resposta que não é JSON.'); }
+      var linhas = (j.linhas || []).map(function (l) {
+        l.etapaId = l.etapa;
+        l.etapa = Object.prototype.hasOwnProperty.call(p.etapas, String(l.etapa)) ? p.etapas[String(l.etapa)] : 'Outros';
+        return l;
+      });
+      st.dados[p.id] = { linhas: linhas, geradoEm: j.geradoEm ? new Date(j.geradoEm) : new Date() };
+      return st.dados[p.id];
+    });
+    st.carregando[p.id] = promessa;
+    return promessa.then(function (d) { delete st.carregando[p.id]; return d; }, function (e) { delete st.carregando[p.id]; throw e; });
+  }
+
+  // ══ Filtragem ══════════════════════════════════════════════════════════════
+  // Aplica período, controles e seleções por clique. "campo" ignora o próprio controle (opções do filtro);
+  // "grafico" ignora a seleção do próprio gráfico, que continua inteiro e só destaca o que foi clicado.
+  function filtrar(p, linhas, per, ignorar) {
+    ignorar = ignorar || {};
+    var fs = filtrosDe(p), campos = Object.keys(fs).filter(function (c) { return c !== ignorar.campo && Array.isArray(fs[c]); });
+    var conjuntos = campos.map(function (c) { return new Set(fs[c]); });
+    var its = interacoesDe(p), selecoes = Object.keys(its).filter(function (k) { return k !== ignorar.grafico; }).map(function (k) { return its[k]; });
+    return linhas.filter(function (l) {
+      if (!l.dia || l.dia < per.de || l.dia > per.ate) return false;
+      for (var i = 0; i < campos.length; i++) if (!conjuntos[i].has(l[campos[i]])) return false;
+      for (var s = 0; s < selecoes.length; s++) for (var f in selecoes[s]) if (l[f] !== selecoes[s][f]) return false;
+      return true;
+    });
+  }
+  function confere(l, sel) { for (var f in sel) if (l[f] !== sel[f]) return false; return true; }
+
+  // ══ Renderização ═══════════════════════════════════════════════════════════
+  var $pagina = document.getElementById('pagina');
+  var $estado = document.getElementById('estado');
+  var $estadoCaixa = document.getElementById('estadoCaixa');
+
+  function mostrarEstado(tipo, titulo, texto) {
+    if (!tipo) { $estado.hidden = true; return; }
+    $estado.hidden = false;
+    $estadoCaixa.innerHTML = (tipo === 'carregando' ? '<div class="giro"></div>' : '') +
+      '<strong>' + esc(titulo) + '</strong>' + (texto ? esc(texto) : '') +
+      (tipo === 'erro' ? '<p><button class="btn-atualizar" data-acao="tentar">Tentar de novo</button></p>' : '');
+  }
+
+  function renderNav() {
+    document.getElementById('navLista').innerHTML = PAGINAS.map(function (p) {
+      return '<li><button data-pagina="' + p.id + '"' + (p.id === st.pagina ? ' aria-current="page"' : '') + ' title="' + esc(p.titulo) + '">' + esc(p.titulo) + '</button></li>';
+    }).join('');
+  }
+
+  function abrirPagina(id) {
+    st.pagina = id;
+    fecharPop();
+    renderNav();
+    var p = paginaAtual();
+    document.getElementById('conteudo').scrollTop = 0;
+    if (st.dados[p.id]) { mostrarEstado(null); render(); return; }
+    $pagina.innerHTML = '';
+    mostrarEstado('carregando', 'Carregando ' + p.titulo + '…', 'Buscando as oportunidades do funil no CRM.');
+    carregar(p).then(function () { if (st.pagina === p.id) { mostrarEstado(null); render(); } },
+      function (e) { if (st.pagina === p.id) mostrarEstado('erro', 'Não foi possível carregar os dados.', e.message); });
+  }
+
+  function botaoLimpar(chave) {
+    return '<button class="limpar-selecao" data-limpar="' + esc(chave) + '" title="Limpar a seleção deste gráfico" aria-label="Limpar a seleção deste gráfico">↶</button>';
+  }
+
+  function render() {
+    var p = paginaAtual(), d = st.dados[p.id];
+    if (!d) return;
+    // Redesenhar encurta a página por um instante; guarda a rolagem para o clique não "pular" para o topo.
+    var $conteudo = document.getElementById('conteudo'), rolagem = $conteudo.scrollTop;
+    $pagina.style.minHeight = $pagina.offsetHeight + 'px';
+    $dica.hidden = true;
+    st.graficos = {};
+    var per = periodoDe(p), its = interacoesDe(p);
+    var linhas = filtrar(p, d.linhas, per), anteriores = filtrar(p, d.linhas, periodoAnterior(per));
+    var html = '<div class="topo">';
+    html += '<div class="logo"><img src="' + esc(API) + 'assets/logo-medular.svg" alt="Medular — Centro Especializado de Dor e Coluna"></div>';
+    html += '<div class="filtros">' + p.filtros.map(function (linha) {
+      return '<div class="filtros-linha">' + linha.map(function (f) { return botaoFiltro(p, f[0], f[1]); }).join('') + '</div>';
+    }).join('') + '</div>';
+    html += '<div class="lado"><button class="ctrl data" data-acao="periodo"><span class="rotulo">' + esc(diaPorExtenso(per.de) + ' - ' + diaPorExtenso(per.ate)) +
+      '</span><span class="seta"></span></button><button class="btn-redefinir" data-acao="redefinir">Redefinir Filtros</button></div>';
+    html += '</div>';
+    html += '<div class="info"><span>Dados do CRM de ' + esc(d.geradoEm.toLocaleString('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' })) +
+      ' · ' + fmtInt.format(d.linhas.length) + ' oportunidades no funil</span><button class="btn-atualizar" data-acao="atualizar">Atualizar dados</button></div>';
+    html += '<section class="faixa" aria-label="Indicadores">' + p.kpis.map(function (linha) {
+      return '<div class="faixa-linha">' + linha.map(function (k) { return cartao(k[0], k[1], linhas, anteriores); }).join('') + '</div>';
+    }).join('') + '</section>';
+    html += '<section class="bloco grafico-barras" aria-label="Oportunidades por etapa">' + (its.barras ? botaoLimpar('barras') : '') + '<div id="barras"></div></section>';
+    p.blocos.forEach(function (b, i) {
+      if (b.tipo === 'tabela') html += '<section class="bloco" data-tabela="' + i + '"></section>';
+      else html += '<section class="bloco pizzas">' + b.itens.map(function (it, j) {
+        var chave = 'pizza:' + i + ':' + j;
+        return '<div class="pizza">' + (its[chave] ? botaoLimpar(chave) : '') + '<h3>' + esc(it[0]) + '</h3>' +
+          pizza(chave, filtrar(p, d.linhas, per, { grafico: chave }), it[1], it[2], its[chave]) + '</div>';
+      }).join('') + '</section>';
+    });
+    $pagina.innerHTML = html;
+    renderBarras(filtrar(p, d.linhas, per, { grafico: 'barras' }), its.barras);
+    p.blocos.forEach(function (b, i) { if (b.tipo === 'tabela') renderTabela(p, b, i, filtrar(p, d.linhas, per, { grafico: 'tabela:' + i }), its['tabela:' + i]); });
+    $pagina.style.minHeight = '';
+    $conteudo.scrollTop = rolagem;
+  }
+
+  function botaoFiltro(p, campo, rotulo) {
+    var sel = filtrosDe(p)[campo];
+    var ativo = Array.isArray(sel);
+    var texto = !ativo ? rotulo : (sel.length === 1 ? exibir(sel[0]) : rotulo + ' (' + sel.length + ')');
+    return '<button class="ctrl' + (ativo ? ' ativo' : '') + '" data-filtro="' + campo + '" data-rotulo="' + esc(rotulo) + '" title="' + esc(ativo ? rotulo + ': ' + (sel.map(exibir).join(', ') || 'nenhum') : rotulo) + '">' +
+      '<span class="rotulo">' + esc(texto) + '</span><span class="seta"></span></button>';
+  }
+
+  function contar(linhas, etapas) {
+    if (!etapas.length) return 0;
+    var s = new Set(etapas.map(Number)), n = 0;
+    for (var i = 0; i < linhas.length; i++) if (s.has(Number(linhas[i].etapaId))) n++;
+    return n;
+  }
+
+  // Comparação com o período anterior de mesmo tamanho, como os cartões do Looker ("N/A" quando não há base).
+  function cartao(titulo, etapas, linhas, anteriores) {
+    var atual = contar(linhas, etapas), antes = contar(anteriores, etapas), delta, classe;
+    if (!antes) { delta = (atual ? '<span aria-hidden="true">⬆</span> ' : '') + 'N/A'; classe = atual ? 'sobe' : ''; }
+    else {
+      var v = (atual - antes) / antes;
+      classe = v > 0 ? 'sobe' : (v < 0 ? 'desce' : '');
+      delta = (v > 0 ? '⬆ ' : (v < 0 ? '⬇ ' : '')) + fmtPct.format(Math.abs(v) * 100) + '%';
+    }
+    return '<div class="kpi" title="' + esc(titulo) + '"><div class="kpi-titulo">' + esc(titulo) + '</div><div class="kpi-valor">' + fmtInt.format(atual) +
+      '</div><div class="kpi-delta ' + classe + '">' + delta + '</div></div>';
+  }
+
+  function agrupar(linhas, campo) {
+    var m = new Map();
+    linhas.forEach(function (l) { var k = l[campo]; m.set(k, (m.get(k) || 0) + 1); });
+    return Array.from(m.entries());
+  }
+
+  // ── Barras por etapa (clicar numa barra filtra o resto da página) ──
+  function renderBarras(linhas, sel) {
+    var alvo = document.getElementById('barras');
+    var grupos = agrupar(linhas, 'etapa').sort(function (a, b) { return b[1] - a[1]; });
+    st.graficos.barras = { grupos: grupos };
+    if (!grupos.length) { alvo.innerHTML = '<div class="vazio-grafico">Nenhuma oportunidade com os filtros atuais.</div>'; return; }
+    var largura = Math.max(alvo.clientWidth, 600), alturaUtil = 140, topo = 30, base = topo + alturaUtil;
+    var passo = largura / grupos.length, barra = Math.min(passo * 0.86, 150), max = grupos[0][1];
+    var svg = '<svg viewBox="0 0 ' + largura + ' ' + (base + 56) + '" height="' + (base + 56) + '" role="img" aria-label="Quantidade por etapa">';
+    svg += '<line x1="0" y1="' + base + '" x2="' + largura + '" y2="' + base + '" stroke="#C7C7C7"/>';
+    grupos.forEach(function (g, i) {
+      var h = Math.max(2, Math.round((g[1] / max) * alturaUtil)), x = i * passo + (passo - barra) / 2, y = base - h, cx = x + barra / 2;
+      var apagada = sel && sel.etapa !== g[0];
+      svg += '<g class="barra' + (apagada ? ' apagada' : '') + '" data-barra="' + i + '" data-dica="' + esc(g[0] + ': ' + fmtInt.format(g[1])) + '">';
+      svg += '<rect class="corpo" x="' + x + '" y="' + y + '" width="' + barra + '" height="' + h + '" fill="#1285A0"/>';
+      if (h >= 34) svg += '<text class="valor-dentro" x="' + cx + '" y="' + (y + 22) + '" text-anchor="middle" fill="#fff" font-family="Montserrat, Arial" font-weight="700" font-size="18">' + fmtInt.format(g[1]) + '</text>';
+      else svg += '<line x1="' + cx + '" y1="' + (y - 16) + '" x2="' + cx + '" y2="' + y + '" stroke="#9E9E9E"/><text x="' + cx + '" y="' + (y - 20) + '" text-anchor="middle" fill="' + (apagada ? '#9CCBD7' : '#1285A0') + '" font-family="Montserrat, Arial" font-weight="700" font-size="18">' + fmtInt.format(g[1]) + '</text>';
+      quebrar(g[0], passo).forEach(function (t, j) {
+        svg += '<text x="' + cx + '" y="' + (base + 18 + j * 16) + '" text-anchor="middle" fill="#202124" font-family="Montserrat, Arial" font-weight="700" font-size="14">' + esc(t) + '</text>';
+      });
+      svg += '<rect x="' + (i * passo) + '" y="0" width="' + passo + '" height="' + (base + 56) + '" fill="transparent"/></g>';
+    });
+    alvo.innerHTML = svg + '</svg>';
+  }
+  // Quebra o rótulo do eixo em até 2 linhas que caibam na largura da barra.
+  function quebrar(texto, largura) {
+    var cabe = Math.max(6, Math.floor(largura / 8.5)), palavras = texto.split(' '), linhas = [''];
+    palavras.forEach(function (w) {
+      var atual = linhas[linhas.length - 1];
+      if (!atual) linhas[linhas.length - 1] = w;
+      else if ((atual + ' ' + w).length <= cabe) linhas[linhas.length - 1] = atual + ' ' + w;
+      else linhas.push(w);
+    });
+    if (linhas.length > 2) linhas = [linhas[0], linhas.slice(1).join(' ')];
+    return linhas.map(function (l) { return l.length > cabe ? l.slice(0, cabe - 1) + '…' : l; });
+  }
+
+  // ── Pizza: até 10 fatias (9 maiores + "Outros"), como o padrão do Looker. Clicar numa fatia filtra o resto ──
+  function pizza(chave, linhas, campo, semVazio, sel) {
+    var base = semVazio ? linhas.filter(function (l) { return l[campo] !== ''; }) : linhas;
+    var grupos = agrupar(base, campo).sort(function (a, b) { return b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'pt-BR'); });
+    if (!grupos.length) return '<div class="vazio-grafico">Sem dados.</div>';
+    var fatias = grupos.length > 10
+      ? grupos.slice(0, 9).map(function (g, i) { return { nome: g[0], n: g[1], cor: CORES[i] }; })
+        .concat([{ nome: 'Outros', n: grupos.slice(9).reduce(function (s, g) { return s + g[1]; }, 0), cor: COR_OUTROS, agrupado: true }])
+      : grupos.map(function (g, i) { return { nome: g[0], n: g[1], cor: CORES[i % CORES.length] }; });
+    st.graficos[chave] = { campo: campo, fatias: fatias };
+    var total = base.length, r = 112, c = 115, ang = -Math.PI / 2, svg = '<svg width="230" height="230" viewBox="0 0 230 230" role="img">';
+    fatias.forEach(function (f, i) {
+      var frac = f.n / total, fim = ang + frac * 2 * Math.PI;
+      var classe = 'fatia' + (f.agrupado ? ' agrupada' : '') + (sel && (f.agrupado || sel[campo] !== f.nome) ? ' apagada' : '');
+      var attrs = ' class="' + classe + '" fill="' + f.cor + '" data-fatia="' + esc(chave) + '" data-i="' + i + '" data-dica="' + esc((f.agrupado ? 'Outros' : exibir(f.nome)) + ': ' + fmtInt.format(f.n) + ' (' + fmtPct.format(frac * 100) + '%)') + '"';
+      if (frac >= 0.9999) svg += '<circle cx="' + c + '" cy="' + c + '" r="' + r + '"' + attrs + '/>';
+      else {
+        var x1 = c + r * Math.cos(ang), y1 = c + r * Math.sin(ang), x2 = c + r * Math.cos(fim), y2 = c + r * Math.sin(fim);
+        svg += '<path d="M' + c + ' ' + c + 'L' + x1.toFixed(2) + ' ' + y1.toFixed(2) + 'A' + r + ' ' + r + ' 0 ' + (frac > 0.5 ? 1 : 0) + ' 1 ' + x2.toFixed(2) + ' ' + y2.toFixed(2) + 'Z"' + attrs + '/>';
+      }
+      if (frac >= 0.045) {
+        var meio = ang + (fim - ang) / 2, dist = frac >= 0.9999 ? 0 : r * 0.68, tx = c + dist * Math.cos(meio), ty = c + dist * Math.sin(meio);
+        svg += '<text x="' + tx.toFixed(1) + '" y="' + (ty + 4).toFixed(1) + '" text-anchor="middle" font-size="12" fill="#202124" pointer-events="none"' + (classe.indexOf('apagada') >= 0 ? ' opacity=".35"' : '') + '>' + fmtPct.format(frac * 100) + '%</text>';
+      }
+      ang = fim;
+    });
+    svg += '</svg>';
+    // Na legenda do Looker o valor vazio aparece sem texto.
+    var legenda = '<ul class="legenda">' + fatias.map(function (f) {
+      return '<li title="' + esc(f.agrupado ? 'Outros' : exibir(f.nome)) + '"><i style="background:' + f.cor + '"></i><span>' + esc(f.agrupado ? 'Outros' : f.nome) + '</span></li>';
+    }).join('') + '</ul>';
+    return '<div class="pizza-corpo">' + svg + legenda + '</div>';
+  }
+
+  // ── Tabelas: linhas iguais nas colunas exibidas viram uma, ordenadas pela quantidade (como no Looker).
+  // Clicar numa linha filtra o resto da página por todos os valores dela ──
+  function renderTabela(p, b, i, linhas, sel) {
+    var alvo = $pagina.querySelector('[data-tabela="' + i + '"]'), chave = 'tabela:' + i;
+    var chaveEstado = p.id + ':' + i, est = st.tabelas[chaveEstado] || (st.tabelas[chaveEstado] = { ordem: null, sentido: 1, pagina: 0 });
+    var base = b.soComRealizacao ? linhas.filter(function (l) { return l.realizacao; }) : linhas;
+    var campos = b.colunas.map(function (c) { return c[0]; });
+    var grupos = new Map();
+    base.forEach(function (l) {
+      var k = campos.map(function (c) { return l[c] === null || l[c] === undefined ? '\u0000' : String(l[c]); }).join('\u0001');
+      var g = grupos.get(k);
+      if (g) g.n++; else grupos.set(k, { l: l, n: 1 });
+    });
+    var lista = Array.from(grupos.values());
+    if (est.ordem === null) lista.sort(function (a, b2) { return b2.n - a.n; });
+    else {
+      var campo = est.ordem;
+      lista.sort(function (a, b2) {
+        var x = campo === '#' ? a.n : a.l[campo], y = campo === '#' ? b2.n : b2.l[campo];
+        if (x === y) return 0;
+        if (x === null || x === '' || x === undefined) return 1;
+        if (y === null || y === '' || y === undefined) return -1;
+        return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR')) * est.sentido;
+      });
+    }
+    var total = lista.length, paginas = Math.max(1, Math.ceil(total / b.porPagina));
+    if (est.pagina >= paginas) est.pagina = paginas - 1;
+    var ini = est.pagina * b.porPagina, fatia = lista.slice(ini, ini + b.porPagina);
+    st.graficos[chave] = { campos: campos, fatia: fatia };
+    var cab = b.colunas.slice();
+    if (b.contagem) cab.push(['#', b.contagem]);
+    var html = (sel ? botaoLimpar(chave) : '') + '<div class="tabela-caixa"><div class="tabela-rolagem"><table' + (sel ? ' class="com-selecao"' : '') + '><thead><tr>' + cab.map(function (c) {
+      var seta = est.ordem === c[0] ? '<span class="ordem">' + (est.sentido > 0 ? '▲' : '▼') + '</span>' : '';
+      return '<th data-ordem="' + esc(c[0]) + '" title="Ordenar por ' + esc(c[1]) + '">' + esc(c[1]) + seta + '</th>';
+    }).join('') + '</tr></thead><tbody>';
+    if (!fatia.length) html += '<tr class="vazia"><td colspan="' + cab.length + '">Nenhum registro com os filtros atuais.</td></tr>';
+    fatia.forEach(function (g, gi) {
+      html += '<tr data-linha="' + gi + '"' + (sel && confere(g.l, sel) ? ' class="selecionada"' : '') + '>' + cab.map(function (c) {
+        if (c[0] === '#') return '<td class="num">' + fmtInt.format(g.n) + '</td>';
+        var v = g.l[c[0]];
+        if (c[0] === 'valor') return '<td class="num">' + (v === null || v === undefined ? 'null' : esc(fmtMoeda.format(v))) + '</td>';
+        return '<td title="' + esc(exibir(v)) + '">' + esc(exibir(v)) + '</td>';
+      }).join('') + '</tr>';
+    });
+    html += '</tbody></table></div><div class="tabela-rodape"><button class="btn-csv" data-csv="' + i + '">Exportar CSV</button><div class="paginacao"><span>' +
+      (total ? fmtInt.format(ini + 1) + ' - ' + fmtInt.format(ini + fatia.length) : '0') + ' / ' + fmtInt.format(total) + '</span>' +
+      '<button data-pag="-1" aria-label="Página anterior"' + (est.pagina === 0 ? ' disabled' : '') + '>‹</button>' +
+      '<button data-pag="1" aria-label="Próxima página"' + (est.pagina >= paginas - 1 ? ' disabled' : '') + '>›</button></div></div></div>';
+    alvo.innerHTML = html;
+    alvo._csv = function () { return paraCSV(cab, lista); };
+  }
+
+  function paraCSV(cab, lista) {
+    var q = function (v) { var s = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    var linhas = [cab.map(function (c) { return q(c[1]); }).join(';')];
+    lista.forEach(function (g) {
+      linhas.push(cab.map(function (c) {
+        if (c[0] === '#') return g.n;
+        var v = g.l[c[0]];
+        return c[0] === 'valor' && v !== null && v !== undefined ? String(v).replace('.', ',') : q(v);
+      }).join(';'));
+    });
+    return '﻿' + linhas.join('\r\n');
+  }
+
+  function baixar(nome, conteudo) {
+    var url = URL.createObjectURL(new Blob([conteudo], { type: 'text/csv;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // ══ Seleção por clique nos gráficos ════════════════════════════════════════
+  function alternarSelecao(p, chave, sel) {
+    var its = interacoesDe(p), atual = its[chave];
+    var igual = atual && Object.keys(sel).length === Object.keys(atual).length && Object.keys(sel).every(function (k) { return atual[k] === sel[k]; });
+    if (igual) delete its[chave]; else its[chave] = sel;
+    zerarPaginacao(p); render();
+  }
+
+  // ══ Popovers: filtro de lista e período ════════════════════════════════════
+  var $pop = document.getElementById('pop'), popAberto = null;
+  function fecharPop() { $pop.hidden = true; $pop.innerHTML = ''; $pop.className = 'pop'; popAberto = null; }
+  function posicionar(ancora) {
+    var r = ancora.getBoundingClientRect();
+    $pop.hidden = false;
+    var w = $pop.offsetWidth, h = $pop.offsetHeight;
+    var x = Math.min(r.left, window.innerWidth - w - 8), y = r.top;
+    if (y + h > window.innerHeight - 8) y = Math.max(8, window.innerHeight - h - 8);
+    $pop.style.left = Math.max(8, x) + 'px';
+    $pop.style.top = y + 'px';
+  }
+
+  // Controle de lista como o do Looker: tudo marcado = sem filtro; desmarcar exclui; "somente" deixa um valor.
+  function abrirFiltro(ancora, campo, rotulo) {
+    var p = paginaAtual(), d = st.dados[p.id];
+    if (!d) return;
+    popAberto = { tipo: 'filtro', ancora: ancora, busca: '' };
+    var opcoes = agrupar(filtrar(p, d.linhas, periodoDe(p), { campo: campo }), campo)
+      .sort(function (a, b) { return b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'pt-BR'); });
+    var todos = opcoes.map(function (o) { return o[0]; });
+    function visiveis() {
+      var termo = semAcento(popAberto.busca);
+      return opcoes.map(function (o, i) { return i; }).filter(function (i) { return !termo || semAcento(exibir(opcoes[i][0])).indexOf(termo) >= 0; });
+    }
+    function desenhar() {
+      var sel = filtrosDe(p)[campo], ativo = Array.isArray(sel), s = new Set(ativo ? sel : []);
+      var idx = visiveis();
+      var marcados = ativo ? todos.filter(function (v) { return s.has(v); }).length : todos.length;
+      var cb = $pop.querySelector('[data-pop="todos"]');
+      cb.checked = marcados === todos.length && todos.length > 0;
+      cb.indeterminate = marcados > 0 && marcados < todos.length;
+      $pop.querySelector('.pop-lista').innerHTML = idx.slice(0, 500).map(function (i) {
+        var v = opcoes[i][0], marcado = !ativo || s.has(v);
+        return '<label class="pop-item"><input type="checkbox" data-i="' + i + '"' + (marcado ? ' checked' : '') + '><span class="nome" title="' + esc(exibir(v)) + '">' + esc(exibir(v)) +
+          '</span><button class="so" data-so="' + i + '">Somente</button><span class="qtd">' + fmtInt.format(opcoes[i][1]) + '</span></label>';
+      }).join('') + (idx.length > 500 ? '<div class="pop-mais">Refine a busca para ver mais ' + fmtInt.format(idx.length - 500) + ' valores.</div>' : '') +
+        (idx.length ? '' : '<div class="pop-mais">Nenhum valor.</div>');
+    }
+    function gravar(valores) {
+      var fs = filtrosDe(p);
+      if (valores === null || (valores.length === todos.length && todos.every(function (v) { return valores.indexOf(v) >= 0; }))) delete fs[campo];
+      else fs[campo] = valores;
+      zerarPaginacao(p); render(); desenhar();
+    }
+    $pop.innerHTML = '<div class="pop-cab"><label><input type="checkbox" data-pop="todos"> ' + esc(rotulo) + '</label><span>Record Count</span></div>' +
+      '<input class="pop-busca" type="search" placeholder="Digite para pesquisar" aria-label="Pesquisar">' +
+      '<div class="pop-lista"></div>';
+    desenhar();
+    posicionar(ancora);
+    var busca = $pop.querySelector('.pop-busca');
+    busca.focus();
+    busca.addEventListener('input', function () { popAberto.busca = busca.value; desenhar(); });
+    $pop.onclick = function (ev) {
+      var so = ev.target.closest('[data-so]');
+      if (so) { ev.preventDefault(); gravar([opcoes[+so.dataset.so][0]]); }
+    };
+    $pop.onchange = function (ev) {
+      var cb = ev.target, sel = filtrosDe(p)[campo], atual = Array.isArray(sel) ? sel.slice() : todos.slice();
+      if (cb.dataset.pop === 'todos') { gravar(cb.checked ? null : []); return; }
+      if (cb.dataset.i === undefined) return;
+      var v = opcoes[+cb.dataset.i][0];
+      if (cb.checked) { if (atual.indexOf(v) < 0) atual.push(v); } else atual = atual.filter(function (x) { return x !== v; });
+      gravar(atual);
+    };
+  }
+
+  function abrirPeriodo(ancora) {
+    var p = paginaAtual(), per = periodoDe(p), h = hoje();
+    popAberto = { tipo: 'periodo', ancora: ancora };
+    $pop.className = 'pop datas';
+    var atalhos = [
+      ['Padrão do relatório', p.periodo()],
+      ['Hoje', { de: h, ate: h }],
+      ['Últimos 7 dias', { de: somarDias(h, -6), ate: h }],
+      ['Últimos 30 dias', { de: somarDias(h, -29), ate: h }],
+      ['Este mês', { de: h.slice(0, 8) + '01', ate: fimDoMes(h) }],
+      ['Este ano', { de: h.slice(0, 4) + '-01-01', ate: h.slice(0, 4) + '-12-31' }],
+      ['Ano passado', { de: (+h.slice(0, 4) - 1) + '-01-01', ate: (+h.slice(0, 4) - 1) + '-12-31' }]
+    ];
+    $pop.innerHTML = '<div class="pop-datas"><div class="atalhos">' + atalhos.map(function (a, i) { return '<button data-atalho="' + i + '">' + esc(a[0]) + '</button>'; }).join('') + '</div>' +
+      '<label>Data inicial<input type="date" id="perDe" value="' + per.de + '"></label><label>Data final<input type="date" id="perAte" value="' + per.ate + '"></label>' +
+      '<button class="aplicar" data-aplicar>Aplicar</button></div>';
+    posicionar(ancora);
+    $pop.onchange = null;
+    $pop.onclick = function (ev) {
+      var a = ev.target.dataset.atalho;
+      if (a !== undefined) { aplicarPeriodo(p, atalhos[+a][1]); return; }
+      if (ev.target.hasAttribute('data-aplicar')) {
+        var de = document.getElementById('perDe').value, ate = document.getElementById('perAte').value;
+        if (de && ate) aplicarPeriodo(p, de <= ate ? { de: de, ate: ate } : { de: ate, ate: de });
+      }
+    };
+  }
+  function aplicarPeriodo(p, per) { st.periodo[p.id] = { de: per.de, ate: per.ate }; zerarPaginacao(p); fecharPop(); render(); }
+
+  function zerarPaginacao(p) { Object.keys(st.tabelas).forEach(function (k) { if (k.indexOf(p.id + ':') === 0) st.tabelas[k].pagina = 0; }); }
+
+  // ══ Eventos ════════════════════════════════════════════════════════════════
+  document.getElementById('navLista').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-pagina]'); if (b) abrirPagina(b.dataset.pagina);
+  });
+  document.getElementById('navRecolher').addEventListener('click', function () {
+    document.getElementById('nav').classList.toggle('recolhida'); setTimeout(render, 200);
+  });
+
+  document.addEventListener('click', function (ev) {
+    var p = paginaAtual();
+    if ($pop.contains(ev.target)) return;
+    var alvo = ev.target.closest('[data-filtro],[data-acao],[data-barra],[data-fatia],[data-linha],[data-limpar],[data-ordem],[data-pag],[data-csv]');
+    var mesmoPop = popAberto && alvo && popAberto.ancora === alvo;
+    if (!$pop.hidden) fecharPop();
+    if (!alvo || mesmoPop) return;
+    if (alvo.dataset.filtro) abrirFiltro(alvo, alvo.dataset.filtro, alvo.dataset.rotulo);
+    else if (alvo.dataset.acao === 'periodo') abrirPeriodo(alvo);
+    else if (alvo.dataset.acao === 'redefinir') {
+      st.filtros[p.id] = {}; st.interacoes[p.id] = {}; st.periodo[p.id] = p.periodo(); zerarPaginacao(p); render();
+    } else if (alvo.dataset.acao === 'atualizar') {
+      alvo.disabled = true; alvo.textContent = 'Atualizando…';
+      carregar(p, true).then(render, function (e) { mostrarEstado('erro', 'Não foi possível atualizar os dados.', e.message); });
+    } else if (alvo.dataset.acao === 'tentar') {
+      mostrarEstado(null); abrirPagina(p.id);
+    } else if (alvo.dataset.limpar) {
+      delete interacoesDe(p)[alvo.dataset.limpar]; zerarPaginacao(p); render();
+    } else if (alvo.dataset.barra !== undefined) {
+      var g = st.graficos.barras.grupos[+alvo.dataset.barra];
+      if (g) alternarSelecao(p, 'barras', { etapa: g[0] });
+    } else if (alvo.dataset.fatia) {
+      var graf = st.graficos[alvo.dataset.fatia], f = graf && graf.fatias[+alvo.dataset.i];
+      if (f && !f.agrupado) { var s = {}; s[graf.campo] = f.nome; alternarSelecao(p, alvo.dataset.fatia, s); }
+    } else if (alvo.dataset.linha !== undefined) {
+      var caixaL = alvo.closest('[data-tabela]'), gt = st.graficos['tabela:' + caixaL.dataset.tabela], gl = gt && gt.fatia[+alvo.dataset.linha];
+      if (gl) { var sl = {}; gt.campos.forEach(function (c) { sl[c] = gl.l[c] === undefined ? null : gl.l[c]; }); alternarSelecao(p, 'tabela:' + caixaL.dataset.tabela, sl); }
+    } else if (alvo.dataset.ordem) {
+      var caixa = alvo.closest('[data-tabela]'), est = st.tabelas[p.id + ':' + caixa.dataset.tabela];
+      if (est.ordem === alvo.dataset.ordem) est.sentido = -est.sentido; else { est.ordem = alvo.dataset.ordem; est.sentido = 1; }
+      render();
+    } else if (alvo.dataset.pag) {
+      var cx = alvo.closest('[data-tabela]'), es = st.tabelas[p.id + ':' + cx.dataset.tabela];
+      es.pagina = Math.max(0, es.pagina + Number(alvo.dataset.pag));
+      render();
+    } else if (alvo.dataset.csv !== undefined) {
+      var sec = alvo.closest('[data-tabela]');
+      if (sec && sec._csv) baixar('relatorio-medular-' + p.id + '-' + hoje() + '.csv', sec._csv());
+    }
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') fecharPop(); });
+
+  // Dica ao passar o mouse nas barras e fatias.
+  var $dica = document.getElementById('dica');
+  document.addEventListener('mousemove', function (ev) {
+    var alvo = ev.target.closest && ev.target.closest('[data-dica]');
+    if (!alvo) { $dica.hidden = true; return; }
+    $dica.textContent = alvo.getAttribute('data-dica');
+    $dica.hidden = false;
+    $dica.style.left = Math.min(ev.clientX + 14, window.innerWidth - $dica.offsetWidth - 8) + 'px';
+    $dica.style.top = (ev.clientY + 14) + 'px';
+  });
+
+  var tempoResize = null;
+  window.addEventListener('resize', function () { clearTimeout(tempoResize); tempoResize = setTimeout(function () { fecharPop(); render(); }, 150); });
+
+  // ══ Início ═════════════════════════════════════════════════════════════════
+  renderNav();
+  if (window.omni && typeof omni.ready === 'function') {
+    mostrarEstado('carregando', 'Conectando ao sistema…');
+    omni.ready(function (c) { ctx = c || {}; abrirPagina(st.pagina); });
+  } else {
+    mostrarEstado('erro', 'Abra este relatório pelo sistema.', 'Esta página é uma extensão e precisa ser aberta pelo menu Relatórios.');
+  }
+})();
+</script>
+</body>
+</html>

@@ -22,6 +22,8 @@ As pipelines rodam **uma de cada vez**. Para escrever na planilha, o serviço l�
 | `MEDULAR_QUEUE_ID` | não | `25` |
 | `SPREADSHEET_ID` | não | `17VKwnesDgkPYrres2DFyE4oxLlt7qX3DNzZTcGQDgOE` |
 | `SYNC_TOKEN` | não | quando definido, as rotas de disparo exigem o header `x-sync-token` |
+| `EXTENSAO_TOKEN` | não | liga o endpoint de dados da extensão "Relatório Medular" (veja abaixo) |
+| `PUBLIC_URL` | não | URL pública do serviço; sem ela, usa o host da requisição |
 | `CRON_SCHEDULE` | não | `0 5,14 * * *` (5h e 14h) |
 | `TZ_APP` | não | `America/Sao_Paulo` (fuso do cron e das datas) |
 | `PORT` | não | `3000` |
@@ -71,6 +73,24 @@ curl -X POST https://SEU-HOST/sync -H "x-sync-token: $SYNC_TOKEN"
 curl -X POST https://SEU-HOST/sync/cirurgias -H "x-sync-token: $SYNC_TOKEN"
 curl https://SEU-HOST/status
 ```
+
+## Extensão "Relatório Medular"
+
+O serviço também hospeda uma extensão do sistema que reproduz o relatório do Looker Studio, com os dados ao vivo do CRM. Os arquivos estão em `extensao-relatorio/`, e os detalhes de cada página ficam no [README da extensão](extensao-relatorio/README.md).
+
+| Rota | Descrição |
+|---|---|
+| `GET /extensao/manifest.json` | Manifest que o administrador do sistema instala |
+| `GET /extensao/index.html`, `/extensao/assets/*` | Página e ícones da extensão |
+| `GET /extensao/dados/:pagina` | Dados de `interna`, `externa`, `cirurgias` ou `clinica`, buscados no CRM pelo id do funil. Exige `Authorization: Bearer <EXTENSAO_TOKEN>`. Fica em cache por 60 s, e `?atualizar=1` força nova busca (no máximo uma a cada 10 s) |
+
+Para instalar:
+
+1. Defina `EXTENSAO_TOKEN` no deploy com um valor longo e aleatório, por exemplo `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`, e publique o serviço.
+2. No sistema, em **Extensões instaladas**, instale pela URL `https://SEU-HOST/extensao/manifest.json` e preencha o campo **Token do relatório** com o mesmo valor do `EXTENSAO_TOKEN`.
+3. O relatório aparece em **Relatórios → Relatório Medular**, só para administradores.
+
+Os arquivos da extensão são lidos quando o serviço sobe. Depois de alterá-los, publique o serviço de novo e atualize o manifest na tela de extensões instaladas.
 
 ## Desenvolvimento
 

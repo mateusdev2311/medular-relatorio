@@ -24,6 +24,10 @@ export interface Config {
   spreadsheetId: string;
   google: CredencialGoogle;
   syncToken: string | undefined;
+  /** Token da extensão "Relatório Medular" (sem ele, /extensao/dados fica desligado). */
+  extensaoToken: string | undefined;
+  /** URL pública do serviço, usada para a página da extensão achar o endpoint de dados. */
+  urlPublica: string | undefined;
   cronSchedule: string;
   tz: string;
   port: number;
@@ -97,6 +101,8 @@ export function carregarConfig(env: NodeJS.ProcessEnv = process.env): Config {
     spreadsheetId: valor(env, 'SPREADSHEET_ID') ?? '17VKwnesDgkPYrres2DFyE4oxLlt7qX3DNzZTcGQDgOE',
     google,
     syncToken: valor(env, 'SYNC_TOKEN'),
+    extensaoToken: valor(env, 'EXTENSAO_TOKEN'),
+    urlPublica: valor(env, 'PUBLIC_URL'),
     cronSchedule: valor(env, 'CRON_SCHEDULE') ?? '0 5,14 * * *',
     tz,
     port,

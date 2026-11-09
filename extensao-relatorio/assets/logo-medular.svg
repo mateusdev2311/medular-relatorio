@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 98" width="360" height="98" role="img" aria-label="Medular — Centro Especializado de Dor e Coluna">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1F5FA8"/>
+      <stop offset="1" stop-color="#21B3B0"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#g)">
+    <circle cx="30" cy="16" r="9"/>
+    <circle cx="56" cy="12" r="7"/>
+    <circle cx="14" cy="38" r="7"/>
+    <circle cx="42" cy="36" r="10"/>
+    <circle cx="70" cy="34" r="8"/>
+    <circle cx="24" cy="60" r="9"/>
+    <circle cx="52" cy="60" r="8"/>
+    <circle cx="78" cy="58" r="6"/>
+    <circle cx="36" cy="82" r="8"/>
+    <circle cx="62" cy="82" r="6"/>
+  </g>
+  <text x="104" y="54" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="700" fill="#6B6B6B" textLength="248" lengthAdjust="spacingAndGlyphs">MEDULAR</text>
+  <text x="232" y="74" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#7A7A7A" letter-spacing="1.5">CENTRO ESPECIALIZADO</text>
+  <text x="232" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#7A7A7A" letter-spacing="1.5">DE DOR E COLUNA</text>
+</svg>

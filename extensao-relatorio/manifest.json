@@ -1,0 +1,32 @@
+{
+  "manifestVersion": 1,
+  "id": "medular.relatorio",
+  "version": "1.0.0",
+  "sdk": "1.x",
+  "name": "Relatório Medular",
+  "description": "Relatório gerencial da Medular (Autorização Interna, Autorização Externa, Cirurgias e Clínica) com os dados ao vivo do CRM. Visível só para administradores.",
+  "author": { "name": "Medular" },
+  "icon": "assets/icone.svg",
+  "requires": ["crm"],
+  "config": [
+    {
+      "key": "token",
+      "label": "Token do relatório",
+      "type": "secret",
+      "required": true,
+      "help": "O mesmo valor da variável EXTENSAO_TOKEN do serviço medular-sync."
+    }
+  ],
+  "contributions": [
+    {
+      "id": "relatorio-medular",
+      "type": "topMenuSubItem",
+      "parentMenu": "reports",
+      "title": "Relatório Medular",
+      "icon": "assets/icone.svg",
+      "visibility": { "userTypes": [0] },
+      "presentation": { "mode": "fullscreen" },
+      "url": "index.html"
+    }
+  ]
+}
