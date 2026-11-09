@@ -367,12 +367,13 @@
 
   // ══ Filtragem ══════════════════════════════════════════════════════════════
   // Aplica período, controles e seleções por clique. "campo" ignora o próprio controle (opções do filtro);
-  // "grafico" ignora a seleção do próprio gráfico, que continua inteiro e só destaca o que foi clicado.
+  // "grafico" ignora a seleção do próprio gráfico, que continua inteiro e só destaca o que foi clicado;
+  // "semCliques" ignora as seleções por clique. Controle sem nenhum valor marcado não filtra.
   function filtrar(p, linhas, per, ignorar) {
     ignorar = ignorar || {};
-    var fs = filtrosDe(p), campos = Object.keys(fs).filter(function (c) { return c !== ignorar.campo && Array.isArray(fs[c]); });
+    var fs = filtrosDe(p), campos = Object.keys(fs).filter(function (c) { return c !== ignorar.campo && Array.isArray(fs[c]) && fs[c].length; });
     var conjuntos = campos.map(function (c) { return new Set(fs[c]); });
-    var its = interacoesDe(p), selecoes = Object.keys(its).filter(function (k) { return k !== ignorar.grafico; }).map(function (k) { return its[k]; });
+    var its = interacoesDe(p), selecoes = ignorar.semCliques ? [] : Object.keys(its).filter(function (k) { return k !== ignorar.grafico; }).map(function (k) { return its[k]; });
     return linhas.filter(function (l) {
       if (!l.dia || l.dia < per.de || l.dia > per.ate) return false;
       for (var i = 0; i < campos.length; i++) if (!conjuntos[i].has(l[campos[i]])) return false;
@@ -381,6 +382,11 @@
     });
   }
   function confere(l, sel) { for (var f in sel) if (l[f] !== sel[f]) return false; return true; }
+  // Um clique antigo num gráfico não pode travar um filtro novo: se a combinação zerar a página, o clique é desfeito.
+  function destravar(p) {
+    var d = st.dados[p.id];
+    if (d && Object.keys(interacoesDe(p)).length && !filtrar(p, d.linhas, periodoDe(p)).length) st.interacoes[p.id] = {};
+  }
 
   // ══ Renderização ═══════════════════════════════════════════════════════════
   var $pagina = document.getElementById('pagina');
@@ -459,7 +465,7 @@
 
   function botaoFiltro(p, campo, rotulo) {
     var sel = filtrosDe(p)[campo];
-    var ativo = Array.isArray(sel);
+    var ativo = Array.isArray(sel) && sel.length > 0;
     var texto = !ativo ? rotulo : (sel.length === 1 ? exibir(sel[0]) : rotulo + ' (' + sel.length + ')');
     return '<button class="ctrl' + (ativo ? ' ativo' : '') + '" data-filtro="' + campo + '" data-rotulo="' + esc(rotulo) + '" title="' + esc(ativo ? rotulo + ': ' + (sel.map(exibir).join(', ') || 'nenhum') : rotulo) + '">' +
       '<span class="rotulo">' + esc(texto) + '</span><span class="seta"></span></button>';
@@ -639,9 +645,12 @@
     var p = paginaAtual(), d = st.dados[p.id];
     if (!d) return;
     popAberto = { tipo: 'filtro', ancora: ancora, busca: '' };
-    var opcoes = agrupar(filtrar(p, d.linhas, periodoDe(p), { campo: campo }), campo)
-      .sort(function (a, b) { return b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'pt-BR'); });
+    // As opções respeitam o período e os outros controles, mas não os cliques nos gráficos.
+    var opcoes = agrupar(filtrar(p, d.linhas, periodoDe(p), { campo: campo, semCliques: true }), campo);
     var todos = opcoes.map(function (o) { return o[0]; });
+    // Valor marcado que saiu da lista continua visível (com 0), para poder ser desmarcado.
+    (filtrosDe(p)[campo] || []).forEach(function (v) { if (todos.indexOf(v) < 0) opcoes.push([v, 0]); });
+    opcoes.sort(function (a, b) { return b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'pt-BR'); });
     function visiveis() {
       var termo = semAcento(popAberto.busca);
       return opcoes.map(function (o, i) { return i; }).filter(function (i) { return !termo || semAcento(exibir(opcoes[i][0])).indexOf(termo) >= 0; });
@@ -664,7 +673,7 @@
       var fs = filtrosDe(p);
       if (valores === null || (valores.length === todos.length && todos.every(function (v) { return valores.indexOf(v) >= 0; }))) delete fs[campo];
       else fs[campo] = valores;
-      zerarPaginacao(p); render(); desenhar();
+      destravar(p); zerarPaginacao(p); render(); desenhar();
     }
     $pop.innerHTML = '<div class="pop-cab"><label><input type="checkbox" data-pop="todos"> ' + esc(rotulo) + '</label><span>Record Count</span></div>' +
       '<input class="pop-busca" type="search" placeholder="Digite para pesquisar" aria-label="Pesquisar">' +
@@ -715,7 +724,7 @@
       }
     };
   }
-  function aplicarPeriodo(p, per) { st.periodo[p.id] = { de: per.de, ate: per.ate }; zerarPaginacao(p); fecharPop(); render(); }
+  function aplicarPeriodo(p, per) { st.periodo[p.id] = { de: per.de, ate: per.ate }; destravar(p); zerarPaginacao(p); fecharPop(); render(); }
 
   function zerarPaginacao(p) { Object.keys(st.tabelas).forEach(function (k) { if (k.indexOf(p.id + ':') === 0) st.tabelas[k].pagina = 0; }); }
 

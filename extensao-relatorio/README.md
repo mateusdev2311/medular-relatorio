@@ -30,7 +30,7 @@ As regras abaixo foram conferidas contra a planilha: todas as contagens, percent
 ### Comum às quatro páginas
 
 - **Navegação**: lista lateral com as 4 páginas, recolhível.
-- **Filtros (listas)**: como o controle do Looker. Todos os valores começam marcados, o que significa sem filtro. Desmarcar um valor o exclui e "Somente" deixa um só. A lista vem ordenada por "Record Count", tem busca, e o vazio aparece como "null". As opções respeitam os demais filtros, o período e as seleções por clique.
+- **Filtros (listas)**: como o controle do Looker. Todos os valores começam marcados, o que significa sem filtro. Desmarcar um valor o exclui e "Somente" deixa um só. A lista vem ordenada por "Record Count", tem busca, e o vazio aparece como "null". As opções respeitam os demais filtros e o período, mas não os cliques nos gráficos. Sem nenhum valor marcado, o filtro não se aplica. Se uma escolha zerar a página por causa de um clique anterior, esse clique é desfeito.
 - **Período**: filtra pela data de criação da oportunidade ("Data de Criação", `createdAt` no fuso de São Paulo).
 - **Cliques que filtram**: clicar numa **barra**, numa **fatia de pizza** ou numa **linha de tabela** filtra todos os outros gráficos e os cartões da página. A linha de tabela filtra por todos os valores daquela linha. O gráfico clicado continua inteiro e só destaca a seleção, esmaecendo o resto. Clicar de novo no mesmo item, ou no ↶ acima do gráfico, desfaz. Seleções em gráficos diferentes se somam.
 - **Redefinir Filtros**: limpa os filtros, as seleções por clique e volta ao período padrão da página.
