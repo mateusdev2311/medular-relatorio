@@ -31,10 +31,27 @@ function interpretar(texto: string): Registro[] {
 
 export async function buscarOportunidades(cfg: ConfigMedular, pipelineId: number): Promise<Registro[]> {
   const corpo = JSON.stringify({ queueId: cfg.queueId, apiKey: cfg.apiKey, pipelineId });
+  return interpretar(await postar(cfg.url, cfg.apiKey, corpo, `pipeline ${pipelineId}`));
+}
 
+/** Etiquetas do CRM (id → nome). Atenção: o endpoint só devolve as etiquetas habilitadas para contatos. */
+export async function buscarTags(cfg: ConfigMedular): Promise<Map<string, string>> {
+  const url = new URL('getTags', cfg.url).href;
+  const texto = await postar(url, cfg.apiKey, JSON.stringify({ queueId: cfg.queueId, apiKey: cfg.apiKey }), 'etiquetas');
+  const dados: unknown = JSON.parse(texto);
+  if (!Array.isArray(dados)) throw new Error('CRM devolveu etiquetas em formato inesperado.');
+  const tags = new Map<string, string>();
+  for (const t of dados as { id?: unknown; name?: unknown }[]) {
+    const nome = typeof t?.name === 'string' ? t.name.trim() : '';
+    if (t?.id !== undefined && t?.id !== null && nome) tags.set(String(t.id), nome);
+  }
+  return tags;
+}
+
+async function postar(url: string, apiKey: string, corpo: string, descricao: string): Promise<string> {
   for (let tentativa = 1; ; tentativa++) {
     try {
-      const res = await fetch(cfg.url, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,10 +63,10 @@ export async function buscarOportunidades(cfg: ConfigMedular, pipelineId: number
       });
       const texto = new TextDecoder('utf-8').decode(await res.arrayBuffer());
       if (!res.ok) {
-        const trecho = texto.slice(0, 300).split(cfg.apiKey).join('***');
-        throw new ErroHttp(res.status, `CRM respondeu HTTP ${res.status} (pipeline ${pipelineId}): ${trecho}`);
+        const trecho = texto.slice(0, 300).split(apiKey).join('***');
+        throw new ErroHttp(res.status, `CRM respondeu HTTP ${res.status} (${descricao}): ${trecho}`);
       }
-      return interpretar(texto);
+      return texto;
     } catch (err) {
       if (tentativa >= 2 || !podeRepetir(err)) throw err;
       await new Promise((r) => setTimeout(r, ESPERA_ANTES_DE_REPETIR_MS));

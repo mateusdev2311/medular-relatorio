@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { TZ_APP } from './config';
 import { txt, type Registro } from './format';
-import { nomeRegraA, nomeRegraB } from './procedimentos';
+import { buscarNoMapa, nomeRegraA, nomeRegraB, type BuscaNome } from './procedimentos';
 
 /** Linha enxuta que a extensão "Relatório Medular" recebe: só os campos que o relatório exibe ou filtra. */
 export interface LinhaRelatorio {
@@ -25,7 +25,15 @@ export interface PaginaRelatorio {
   /** Identificador usado na rota /extensao/dados/:pagina. */
   id: string;
   pipelineId: number;
-  linha(r: Registro): LinhaRelatorio;
+  linha(r: Registro, nomes?: BuscaNome): LinhaRelatorio;
+}
+
+// O getTags do CRM não devolve as etiquetas exclusivas de oportunidades, e esta foi renomeada lá depois do dicionário.
+const RENOMEADAS_NO_CRM: Readonly<Record<string, string>> = { 24: 'RECARGA DE BOMBA' };
+
+/** Nome do procedimento: primeiro o que veio do CRM; depois o dicionário fixo, para as etiquetas que o getTags omite. */
+export function buscaDeNomes(tagsCRM: ReadonlyMap<string, string>): BuscaNome {
+  return (id) => tagsCRM.get(String(id)) ?? (Object.hasOwn(RENOMEADAS_NO_CRM, String(id)) ? RENOMEADAS_NO_CRM[String(id)] : buscarNoMapa(id));
 }
 
 /** Data/hora ISO do CRM → dia aaaa-mm-dd no fuso do app. */
@@ -72,38 +80,38 @@ export const PAGINAS_RELATORIO: readonly PaginaRelatorio[] = [
   {
     id: 'interna',
     pipelineId: 2,
-    linha(r) {
+    linha(r, nomes) {
       const { f, ...b } = base(r);
       return { ...b, medico: txt(f['e12ff4f0']), statusGuia: txt(f['0abd3f10']), convenio: txt(f['903787f0']),
-        procedimento: nomeRegraA(r.tags), realizacao: diaLivre(f['f8ff2d920']) };
+        procedimento: nomeRegraA(r.tags, nomes), realizacao: diaLivre(f['f8ff2d920']) };
     },
   },
   {
     id: 'externa',
     pipelineId: 3,
-    linha(r) {
+    linha(r, nomes) {
       const { f, ...b } = base(r);
       return { ...b, medico: txt(f['6119c6c0']), convenio: txt(f['fb99b880']), hospital: txt(f['c9146330']),
-        statusGuia: txt(f['886b2420']), procedimento: nomeRegraA(r.tags), realizacao: diaLivre(f['f00b85310']) };
+        statusGuia: txt(f['886b2420']), procedimento: nomeRegraA(r.tags, nomes), realizacao: diaLivre(f['f00b85310']) };
     },
   },
   {
     id: 'cirurgias',
     pipelineId: 6,
-    linha(r) {
+    linha(r, nomes) {
       const { f, ...b } = base(r);
       // valor_orcamento lê o mesmo campo de Valor_medico_inicial (fe5e3450), como na planilha.
       return { ...b, cirurgiao: txt(f['83429750']), hospital: txt(f['e7ff8d90']), valor: valorBR(f['fe5e3450']),
-        procedimento: nomeRegraB(r.tags), realizacao: diaLivre(f['f3bee40c0']) };
+        procedimento: nomeRegraB(r.tags, nomes), realizacao: diaLivre(f['f3bee40c0']) };
     },
   },
   {
     id: 'clinica',
     pipelineId: 14,
-    linha(r) {
+    linha(r, nomes) {
       const { f, ...b } = base(r);
       return { ...b, cirurgiao: txt(f['c5213c60']), valor: valorBR(f['581a9f30']),
-        procedimento: nomeRegraB(r.tags), realizacao: diaLivre(f['f6cd309a0']) };
+        procedimento: nomeRegraB(r.tags, nomes), realizacao: diaLivre(f['f6cd309a0']) };
     },
   },
 ];

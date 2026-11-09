@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "medular.relatorio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "sdk": "1.x",
   "name": "Relatório Medular",
   "description": "Relatório gerencial da Medular (Autorização Interna, Autorização Externa, Cirurgias e Clínica) com os dados ao vivo do CRM. Visível só para administradores.",

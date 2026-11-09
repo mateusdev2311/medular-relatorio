@@ -55,7 +55,7 @@ describe('transformações do relatório', () => {
 describe('rotas da extensão', () => {
   const registros: Registro[] = [{ title: 'Ana', fkStage: 98, createdAt: '2026-10-01T12:00:00.000Z', tags: [44], formsdata: { '581a9f30': '3000' } }];
 
-  async function montarApp(token: string | undefined) {
+  async function montarApp(token: string | undefined, buscarTags: () => Promise<Map<string, string>> = async () => new Map(), lista = registros) {
     const app = Fastify();
     const chamadas: number[] = [];
     const ok = registrarExtensao(app, {
@@ -64,8 +64,9 @@ describe('rotas da extensão', () => {
       urlPublica: 'https://sync.exemplo.com/',
       buscar: async (id) => {
         chamadas.push(id);
-        return registros;
+        return lista;
       },
+      buscarTags,
     });
     assert.equal(ok, true);
     await app.ready();
@@ -112,6 +113,23 @@ describe('rotas da extensão', () => {
     // Segunda leitura vem do cache: o CRM foi consultado uma vez só, no funil 14.
     await app.inject({ method: 'GET', url: '/extensao/dados/clinica', headers: { authorization: 'Bearer segredo' } });
     assert.deepEqual(chamadas, [14]);
+    await app.close();
+  });
+
+  it('usa os nomes de procedimento do CRM e completa com o dicionário', async () => {
+    const lista: Registro[] = [76, 3, 24, 999].map((tag, i) => ({ title: `P${i}`, fkStage: 98, createdAt: '2026-10-01T12:00:00.000Z', tags: [tag], formsdata: {} }));
+    const { app } = await montarApp('segredo', async () => new Map([['76', 'PUNÇÃO LOMBAR']]), lista);
+    const r = await app.inject({ method: 'GET', url: '/extensao/dados/clinica', headers: { authorization: 'Bearer segredo' } });
+    assert.deepEqual(r.json().linhas.map((l: { procedimento: string }) => l.procedimento), ['PUNÇÃO LOMBAR', 'Bloqueio com cânula', 'RECARGA DE BOMBA', 'ID 999 não mapeado']);
+    await app.close();
+  });
+
+  it('continua respondendo quando o CRM não entrega as etiquetas', async () => {
+    const lista: Registro[] = [{ title: 'A', fkStage: 98, createdAt: '2026-10-01T12:00:00.000Z', tags: [44], formsdata: {} }];
+    const { app } = await montarApp('segredo', async () => { throw new Error('fora do ar'); }, lista);
+    const r = await app.inject({ method: 'GET', url: '/extensao/dados/clinica', headers: { authorization: 'Bearer segredo' } });
+    assert.equal(r.statusCode, 200);
+    assert.equal(r.json().linhas[0].procedimento, 'BMA');
     await app.close();
   });
 

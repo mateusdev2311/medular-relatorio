@@ -4,7 +4,7 @@ import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Registro } from './format';
-import { PAGINAS_RELATORIO } from './relatorio';
+import { buscaDeNomes, PAGINAS_RELATORIO } from './relatorio';
 
 /**
  * Hospeda a extensão "Relatório Medular" (manifest, página e ícones) e o endpoint de dados dela.
@@ -18,6 +18,8 @@ export interface OpcoesExtensao {
   /** URL pública do serviço (ex.: https://medular-sync.exemplo.com). Sem ela, usa o host da requisição. */
   urlPublica: string | undefined;
   buscar(pipelineId: number): Promise<Registro[]>;
+  /** Etiquetas do CRM (id → nome), de onde vêm os nomes dos procedimentos. */
+  buscarTags(): Promise<Map<string, string>>;
 }
 
 const TIPOS: Record<string, string> = {
@@ -31,6 +33,7 @@ const TIPOS: Record<string, string> = {
 };
 const VALIDADE_CACHE_MS = 60_000;
 const INTERVALO_MINIMO_ATUALIZAR_MS = 10_000;
+const VALIDADE_TAGS_MS = 5 * 60_000;
 
 interface Resposta {
   em: number;
@@ -79,11 +82,26 @@ export function registrarExtensao(app: FastifyInstance, op: OpcoesExtensao): boo
 
   const urlBase = (req: FastifyRequest) => `${(op.urlPublica ?? `${req.protocol}://${req.host}`).replace(/\/+$/, '')}/extensao/`;
 
-  async function montar(id: string): Promise<Resposta> {
+  let tags: { em: number; mapa: Map<string, string> } | null = null;
+
+  /** Falha ao buscar etiquetas não derruba o relatório: usa os últimos nomes conhecidos ou o dicionário fixo. */
+  async function obterTags(forcar: boolean): Promise<Map<string, string>> {
+    if (tags && !forcar && Date.now() - tags.em < VALIDADE_TAGS_MS) return tags.mapa;
+    try {
+      tags = { em: Date.now(), mapa: await op.buscarTags() };
+      return tags.mapa;
+    } catch (err) {
+      app.log.warn({ err: { message: err instanceof Error ? err.message : String(err) } }, 'falha ao buscar etiquetas do CRM');
+      return tags?.mapa ?? new Map();
+    }
+  }
+
+  async function montar(id: string, forcar: boolean): Promise<Resposta> {
     const p = paginas.get(id)!;
     const inicio = Date.now();
+    const nomes = buscaDeNomes(await obterTags(forcar));
     // O array do CRM não é guardado: só as linhas enxutas ficam no cache.
-    const linhas = (await op.buscar(p.pipelineId)).map((r) => p.linha(r));
+    const linhas = (await op.buscar(p.pipelineId)).map((r) => p.linha(r, nomes));
     const json = JSON.stringify({ pagina: id, geradoEm: new Date().toISOString(), total: linhas.length, linhas });
     app.log.info({ pagina: id, linhas: linhas.length, bytes: json.length, duracaoMs: Date.now() - inicio }, 'dados da extensão gerados');
     return { em: Date.now(), json, gzip: gzipSync(json) };
@@ -95,7 +113,7 @@ export function registrarExtensao(app: FastifyInstance, op: OpcoesExtensao): boo
     if (atual && (idade < (forcar ? INTERVALO_MINIMO_ATUALIZAR_MS : VALIDADE_CACHE_MS))) return Promise.resolve(atual);
     const andamento = emAndamento.get(id);
     if (andamento) return andamento;
-    const promessa = montar(id)
+    const promessa = montar(id, forcar)
       .then((r) => {
         cache.set(id, r);
         return r;

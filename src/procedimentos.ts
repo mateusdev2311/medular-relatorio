@@ -70,9 +70,9 @@ export const MAPA: Readonly<Record<string, string>> = {
   70: 'INFILTRAÇÃO PERIDURAL',
 };
 
-function buscar(id: unknown): string | undefined {
-  return Object.hasOwn(MAPA, String(id)) ? MAPA[String(id)] : undefined;
-}
+export type BuscaNome = (id: unknown) => string | undefined;
+
+export const buscarNoMapa: BuscaNome = (id) => (Object.hasOwn(MAPA, String(id)) ? MAPA[String(id)] : undefined);
 
 /** Id do procedimento (primeira tag), usado na coluna `procedimento`. */
 export function idProcedimento(tags: unknown): Celula {
@@ -80,13 +80,13 @@ export function idProcedimento(tags: unknown): Celula {
 }
 
 /** Regra A (Autorização Interna e Externa). */
-export function nomeRegraA(tags: unknown): string {
+export function nomeRegraA(tags: unknown, buscar: BuscaNome = buscarNoMapa): string {
   if (!Array.isArray(tags) || tags.length === 0) return 'ID não fornecido';
   return buscar(tags[0]) || 'Procedimento não encontrado';
 }
 
 /** Regra B (Cirurgias e Particulares). */
-export function nomeRegraB(tags: unknown): string {
+export function nomeRegraB(tags: unknown, buscar: BuscaNome = buscarNoMapa): string {
   const id = Array.isArray(tags) ? tags[0] : tags;
   if (id === null || id === undefined) return 'Sem informação de procedimento';
   return buscar(id) || `ID ${id} não mapeado`;

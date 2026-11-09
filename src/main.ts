@@ -5,7 +5,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { carregarConfig, type Config } from './config';
 import { registrarExtensao } from './extensao';
 import { agoraFormatado } from './format';
-import { buscarOportunidades } from './medular';
+import { buscarOportunidades, buscarTags, type ConfigMedular } from './medular';
 import { PIPELINES } from './pipelines';
 import { SheetsClient } from './sheets';
 import { Sincronizador } from './sync';
@@ -21,8 +21,8 @@ try {
 // trustProxy: atrás do proxy do deploy, protocolo e host públicos vêm dos cabeçalhos X-Forwarded-*.
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, trustProxy: true });
 
-const buscarCRM = (pipelineId: number) =>
-  buscarOportunidades({ url: config.medularApiUrl, apiKey: config.medularApiKey, queueId: config.medularQueueId }, pipelineId);
+const crm: ConfigMedular = { url: config.medularApiUrl, apiKey: config.medularApiKey, queueId: config.medularQueueId };
+const buscarCRM = (pipelineId: number) => buscarOportunidades(crm, pipelineId);
 
 const sync = new Sincronizador(PIPELINES, {
   buscar: buscarCRM,
@@ -72,6 +72,7 @@ registrarExtensao(app, {
   token: config.extensaoToken,
   urlPublica: config.urlPublica,
   buscar: buscarCRM,
+  buscarTags: () => buscarTags(crm),
 });
 
 async function encerrar(sinal: string) {

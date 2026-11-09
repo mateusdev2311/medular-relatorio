@@ -106,13 +106,11 @@
   table.com-selecao tbody td { color: var(--apagado); }
   table.com-selecao tbody tr.selecionada td { color: #202124; font-weight: 700; }
   tbody tr.vazia { cursor: default; }
-  .tabela-rodape { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; font-size: 14px; color: #5F5F5F; }
+  .tabela-rodape { display: flex; justify-content: flex-end; align-items: center; padding: 8px 14px; font-size: 14px; color: #5F5F5F; }
   .paginacao { display: flex; align-items: center; gap: 14px; }
   .paginacao button { border: 0; background: none; cursor: pointer; font-size: 20px; color: #3C4043; width: 28px; height: 28px; border-radius: 50%; }
   .paginacao button:disabled { color: #C4C7C5; cursor: default; }
   .paginacao button:not(:disabled):hover { background: #F1F3F4; }
-  .btn-csv { border: 0; background: none; color: var(--teal); cursor: pointer; font-size: 13px; padding: 4px 6px; border-radius: 4px; }
-  .btn-csv:hover { background: #E8F3F6; }
 
   .pizzas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding: 0 12px; }
   .pizza { position: relative; }
@@ -608,33 +606,11 @@
         return '<td title="' + esc(exibir(v)) + '">' + esc(exibir(v)) + '</td>';
       }).join('') + '</tr>';
     });
-    html += '</tbody></table></div><div class="tabela-rodape"><button class="btn-csv" data-csv="' + i + '">Exportar CSV</button><div class="paginacao"><span>' +
+    html += '</tbody></table></div><div class="tabela-rodape"><div class="paginacao"><span>' +
       (total ? fmtInt.format(ini + 1) + ' - ' + fmtInt.format(ini + fatia.length) : '0') + ' / ' + fmtInt.format(total) + '</span>' +
       '<button data-pag="-1" aria-label="Página anterior"' + (est.pagina === 0 ? ' disabled' : '') + '>‹</button>' +
       '<button data-pag="1" aria-label="Próxima página"' + (est.pagina >= paginas - 1 ? ' disabled' : '') + '>›</button></div></div></div>';
     alvo.innerHTML = html;
-    alvo._csv = function () { return paraCSV(cab, lista); };
-  }
-
-  function paraCSV(cab, lista) {
-    var q = function (v) { var s = v === null || v === undefined ? '' : String(v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-    var linhas = [cab.map(function (c) { return q(c[1]); }).join(';')];
-    lista.forEach(function (g) {
-      linhas.push(cab.map(function (c) {
-        if (c[0] === '#') return g.n;
-        var v = g.l[c[0]];
-        return c[0] === 'valor' && v !== null && v !== undefined ? String(v).replace('.', ',') : q(v);
-      }).join(';'));
-    });
-    return '﻿' + linhas.join('\r\n');
-  }
-
-  function baixar(nome, conteudo) {
-    var url = URL.createObjectURL(new Blob([conteudo], { type: 'text/csv;charset=utf-8' }));
-    var a = document.createElement('a');
-    a.href = url; a.download = nome;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   // ══ Seleção por clique nos gráficos ════════════════════════════════════════
@@ -754,7 +730,7 @@
   document.addEventListener('click', function (ev) {
     var p = paginaAtual();
     if ($pop.contains(ev.target)) return;
-    var alvo = ev.target.closest('[data-filtro],[data-acao],[data-barra],[data-fatia],[data-linha],[data-limpar],[data-ordem],[data-pag],[data-csv]');
+    var alvo = ev.target.closest('[data-filtro],[data-acao],[data-barra],[data-fatia],[data-linha],[data-limpar],[data-ordem],[data-pag]');
     var mesmoPop = popAberto && alvo && popAberto.ancora === alvo;
     if (!$pop.hidden) fecharPop();
     if (!alvo || mesmoPop) return;
@@ -786,9 +762,6 @@
       var cx = alvo.closest('[data-tabela]'), es = st.tabelas[p.id + ':' + cx.dataset.tabela];
       es.pagina = Math.max(0, es.pagina + Number(alvo.dataset.pag));
       render();
-    } else if (alvo.dataset.csv !== undefined) {
-      var sec = alvo.closest('[data-tabela]');
-      if (sec && sec._csv) baixar('relatorio-medular-' + p.id + '-' + hoje() + '.csv', sec._csv());
     }
   });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') fecharPop(); });

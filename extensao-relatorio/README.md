@@ -36,7 +36,7 @@ As regras abaixo foram conferidas contra a planilha: todas as contagens, percent
 - **Redefinir Filtros**: limpa os filtros, as seleções por clique e volta ao período padrão da página.
 - **Faixa de indicadores**: cada cartão conta as oportunidades de uma etapa do CRM. Abaixo do número vai a variação contra o **período anterior de mesmo tamanho**. Fica "N/A" quando o período anterior não tem dados, que é o que aparece no Looker com o período padrão.
 - **Barras por etapa**: quantidade por etapa, da maior para a menor. Etapas fora do mapeamento da página entram em "Outros".
-- **Tabelas**: como no Looker, linhas com os mesmos valores nas colunas exibidas viram uma linha só, ordenadas da que reúne mais registros para a que reúne menos. Também ordenam por coluna, paginam com o mesmo tamanho de página do original e exportam CSV.
+- **Tabelas**: como no Looker, linhas com os mesmos valores nas colunas exibidas viram uma linha só, ordenadas da que reúne mais registros para a que reúne menos. Também ordenam por coluna e paginam com o mesmo tamanho de página do original.
 - **Pizzas**: até 10 fatias, com os 9 maiores valores e o restante somado em "Outros". A de **Convênio** ignora os registros sem convênio, como no original.
 
 ### Autorização Interna (funil 2), período padrão de 01/01/2016 ao fim do mês atual
@@ -70,6 +70,10 @@ As regras abaixo foram conferidas contra a planilha: todas as contagens, percent
 - **Cartões**: Cirurgias Não Realizadas (102, "Procedimentos não realizados"), Solicitação Em Processo (99), Orçamento Enviado (100), Agendar Clínica (101), Realizados (98) e Orçamento Negado (103).
 - **Tabela**: Paciente, Procedimento, Cirurgião, Valor Orçamento e Etapas, com 100 linhas por página.
 - **Pizzas**: Procedimento e Cirurgião.
+
+## Nomes dos procedimentos
+
+O nome vem do CRM (`/int/getTags`, com cache de 5 minutos) a partir da primeira etiqueta da oportunidade. Esse endpoint só devolve as etiquetas habilitadas para **contatos**. As etiquetas exclusivas de oportunidades continuam vindo do dicionário de `src/procedimentos.ts`. Uma etiqueta nova que seja só de oportunidade aparece como "não mapeado"/"não encontrado" até ser habilitada também para contatos no CRM ou incluída no dicionário.
 
 ## Diferenças em relação ao Looker
 
