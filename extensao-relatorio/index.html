@@ -56,14 +56,15 @@
   .logo img { width: 175px; display: block; margin-top: 4px; }
   .filtros { display: flex; flex-direction: column; gap: 34px; }
   .filtros-linha { display: flex; gap: 24px; flex-wrap: wrap; }
-  .lado { display: flex; flex-direction: column; gap: 34px; align-items: stretch; }
+  .lado { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 
   .ctrl { width: 186px; height: 45px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px 0 27px; background: #fff; border: 0; border-radius: 4px; box-shadow: var(--sombra); color: var(--texto-forte); font-size: 16px; cursor: pointer; }
   .ctrl:hover { box-shadow: 0 2px 6px rgba(60, 64, 67, .35); }
   .ctrl .rotulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ctrl .seta { flex: none; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #333; }
   .ctrl.ativo { box-shadow: inset 0 0 0 2px var(--teal), var(--sombra); }
-  .ctrl.data { width: 100%; padding-left: 16px; justify-content: center; font-size: 15px; }
+  .ctrl.data { width: 100%; height: 38px; padding-left: 12px; padding-right: 12px; justify-content: center; font-size: 14px; }
+  .aviso-realizacao { color: #B06000; font-weight: 700; }
   .ctrl.data .rotulo { flex: 1; text-align: center; }
   .btn-redefinir { height: 45px; border: 0; border-radius: 8px; background: var(--teal); color: #fff; font-family: Montserrat, Arial, sans-serif; font-size: 20px; cursor: pointer; box-shadow: var(--sombra); }
   .btn-redefinir:hover { background: var(--teal-escuro); }
@@ -292,6 +293,7 @@
   function somarDias(dia, n) { return deUTC(paraUTC(dia) + n * 86400000); }
   function fimDoMes(dia) { var p = dia.split('-'); return deUTC(Date.UTC(+p[0], +p[1], 0)); }
   function diaPorExtenso(dia) { var p = dia.split('-'); return (+p[2]) + ' de ' + MESES[+p[1] - 1] + ' de ' + p[0]; }
+  function diaCurto(dia) { var p = dia.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
   function periodoAnterior(per) {
     var dias = Math.round((paraUTC(per.ate) - paraUTC(per.de)) / 86400000) + 1;
     var ate = somarDias(per.de, -1);
@@ -317,7 +319,8 @@
     carregando: {},   // página → promessa em andamento
     filtros: {},      // página → { campo: [valores] } (campo ausente = todos)
     interacoes: {},   // página → { gráfico: { campo: valor } } (seleção feita clicando num gráfico)
-    periodo: {},      // página → { de, ate }
+    periodo: {},      // página → { de, ate } (data de cadastro)
+    realizacao: {},   // página → { de, ate } (data de realização; ausente = sem esse filtro)
     tabelas: {},      // "página:bloco" → { ordem, sentido, pagina }
     graficos: {}      // gráfico → dados da última renderização (para tratar o clique)
   };
@@ -369,13 +372,16 @@
   // Aplica período, controles e seleções por clique. "campo" ignora o próprio controle (opções do filtro);
   // "grafico" ignora a seleção do próprio gráfico, que continua inteiro e só destaca o que foi clicado;
   // "semCliques" ignora as seleções por clique. Controle sem nenhum valor marcado não filtra.
+  // "realizacao" troca a faixa de data de realização (null = não filtra por ela).
   function filtrar(p, linhas, per, ignorar) {
     ignorar = ignorar || {};
+    var faixa = ignorar.realizacao !== undefined ? ignorar.realizacao : st.realizacao[p.id];
     var fs = filtrosDe(p), campos = Object.keys(fs).filter(function (c) { return c !== ignorar.campo && Array.isArray(fs[c]) && fs[c].length; });
     var conjuntos = campos.map(function (c) { return new Set(fs[c]); });
     var its = interacoesDe(p), selecoes = ignorar.semCliques ? [] : Object.keys(its).filter(function (k) { return k !== ignorar.grafico; }).map(function (k) { return its[k]; });
     return linhas.filter(function (l) {
       if (!l.dia || l.dia < per.de || l.dia > per.ate) return false;
+      if (faixa && (!l.realizacao || l.realizacao < faixa.de || l.realizacao > faixa.ate)) return false;
       for (var i = 0; i < campos.length; i++) if (!conjuntos[i].has(l[campos[i]])) return false;
       for (var s = 0; s < selecoes.length; s++) for (var f in selecoes[s]) if (l[f] !== selecoes[s][f]) return false;
       return true;
@@ -433,16 +439,20 @@
     $dica.hidden = true;
     st.graficos = {};
     var per = periodoDe(p), its = interacoesDe(p);
-    var linhas = filtrar(p, d.linhas, per), anteriores = filtrar(p, d.linhas, periodoAnterior(per));
+    var real = st.realizacao[p.id];
+    // Com o filtro de realização ativo, a comparação dos cartões usa o período anterior dessa data.
+    var linhas = filtrar(p, d.linhas, per), anteriores = real ? filtrar(p, d.linhas, per, { realizacao: periodoAnterior(real) }) : filtrar(p, d.linhas, periodoAnterior(per));
+    var semData = real ? filtrar(p, d.linhas, per, { realizacao: null }).filter(function (l) { return !l.realizacao; }).length : 0;
     var html = '<div class="topo">';
     html += '<div class="logo"><img src="' + esc(API) + 'assets/logo-medular.svg" alt="Medular — Centro Especializado de Dor e Coluna"></div>';
     html += '<div class="filtros">' + p.filtros.map(function (linha) {
       return '<div class="filtros-linha">' + linha.map(function (f) { return botaoFiltro(p, f[0], f[1]); }).join('') + '</div>';
     }).join('') + '</div>';
-    html += '<div class="lado"><button class="ctrl data" data-acao="periodo"><span class="rotulo">' + esc(diaPorExtenso(per.de) + ' - ' + diaPorExtenso(per.ate)) +
+    html += '<div class="lado"><button class="ctrl data" data-acao="periodo" title="' + esc('Data de cadastro: ' + diaPorExtenso(per.de) + ' - ' + diaPorExtenso(per.ate)) + '"><span class="rotulo">Cadastro: ' + esc(diaCurto(per.de) + ' - ' + diaCurto(per.ate)) +
+      '</span><span class="seta"></span></button><button class="ctrl data' + (real ? ' ativo' : '') + '" data-acao="realizacao" title="Filtrar pela data de realização"><span class="rotulo">Realização: ' + esc(real ? diaCurto(real.de) + ' - ' + diaCurto(real.ate) : 'todo o período') +
       '</span><span class="seta"></span></button><button class="btn-redefinir" data-acao="redefinir">Redefinir Filtros</button></div>';
     html += '</div>';
-    html += '<div class="info"><span>Dados do CRM de ' + esc(d.geradoEm.toLocaleString('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' })) +
+    html += '<div class="info">' + (real ? '<span class="aviso-realizacao">' + fmtInt.format(semData) + ' ' + (semData === 1 ? 'cartão sem' : 'cartões sem') + ' data de realização ' + (semData === 1 ? 'ficou' : 'ficaram') + ' de fora</span>' : '') + '<span>Dados do CRM de ' + esc(d.geradoEm.toLocaleString('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' })) +
       ' · ' + fmtInt.format(d.linhas.length) + ' oportunidades no funil</span><button class="btn-atualizar" data-acao="atualizar">Atualizar dados</button></div>';
     html += '<section class="faixa" aria-label="Indicadores">' + p.kpis.map(function (linha) {
       return '<div class="faixa-linha">' + linha.map(function (k) { return cartao(k[0], k[1], linhas, anteriores); }).join('') + '</div>';
@@ -697,16 +707,18 @@
     };
   }
 
-  function abrirPeriodo(ancora) {
-    var p = paginaAtual(), per = periodoDe(p), h = hoje();
+  function abrirPeriodo(ancora, tipo) {
+    var p = paginaAtual(), real = tipo === 'realizacao', per = real ? (st.realizacao[p.id] || { de: '', ate: '' }) : periodoDe(p), h = hoje();
+    var fimMesPassado = somarDias(h.slice(0, 8) + '01', -1);
     popAberto = { tipo: 'periodo', ancora: ancora };
     $pop.className = 'pop datas';
     var atalhos = [
-      ['Padrão do relatório', p.periodo()],
+      real ? ['Todo o período', null] : ['Padrão do relatório', p.periodo()],
       ['Hoje', { de: h, ate: h }],
       ['Últimos 7 dias', { de: somarDias(h, -6), ate: h }],
       ['Últimos 30 dias', { de: somarDias(h, -29), ate: h }],
       ['Este mês', { de: h.slice(0, 8) + '01', ate: fimDoMes(h) }],
+      ['Mês passado', { de: fimMesPassado.slice(0, 8) + '01', ate: fimMesPassado }],
       ['Este ano', { de: h.slice(0, 4) + '-01-01', ate: h.slice(0, 4) + '-12-31' }],
       ['Ano passado', { de: (+h.slice(0, 4) - 1) + '-01-01', ate: (+h.slice(0, 4) - 1) + '-12-31' }]
     ];
@@ -715,16 +727,21 @@
       '<button class="aplicar" data-aplicar>Aplicar</button></div>';
     posicionar(ancora);
     $pop.onchange = null;
+    function aplicar(v) {
+      if (!real) st.periodo[p.id] = { de: v.de, ate: v.ate };
+      else if (v) st.realizacao[p.id] = { de: v.de, ate: v.ate };
+      else delete st.realizacao[p.id];
+      destravar(p); zerarPaginacao(p); fecharPop(); render();
+    }
     $pop.onclick = function (ev) {
       var a = ev.target.dataset.atalho;
-      if (a !== undefined) { aplicarPeriodo(p, atalhos[+a][1]); return; }
+      if (a !== undefined) { aplicar(atalhos[+a][1]); return; }
       if (ev.target.hasAttribute('data-aplicar')) {
         var de = document.getElementById('perDe').value, ate = document.getElementById('perAte').value;
-        if (de && ate) aplicarPeriodo(p, de <= ate ? { de: de, ate: ate } : { de: ate, ate: de });
+        if (de && ate) aplicar(de <= ate ? { de: de, ate: ate } : { de: ate, ate: de });
       }
     };
   }
-  function aplicarPeriodo(p, per) { st.periodo[p.id] = { de: per.de, ate: per.ate }; destravar(p); zerarPaginacao(p); fecharPop(); render(); }
 
   function zerarPaginacao(p) { Object.keys(st.tabelas).forEach(function (k) { if (k.indexOf(p.id + ':') === 0) st.tabelas[k].pagina = 0; }); }
 
@@ -744,9 +761,9 @@
     if (!$pop.hidden) fecharPop();
     if (!alvo || mesmoPop) return;
     if (alvo.dataset.filtro) abrirFiltro(alvo, alvo.dataset.filtro, alvo.dataset.rotulo);
-    else if (alvo.dataset.acao === 'periodo') abrirPeriodo(alvo);
+    else if (alvo.dataset.acao === 'periodo' || alvo.dataset.acao === 'realizacao') abrirPeriodo(alvo, alvo.dataset.acao);
     else if (alvo.dataset.acao === 'redefinir') {
-      st.filtros[p.id] = {}; st.interacoes[p.id] = {}; st.periodo[p.id] = p.periodo(); zerarPaginacao(p); render();
+      st.filtros[p.id] = {}; st.interacoes[p.id] = {}; st.periodo[p.id] = p.periodo(); delete st.realizacao[p.id]; zerarPaginacao(p); render();
     } else if (alvo.dataset.acao === 'atualizar') {
       alvo.disabled = true; alvo.textContent = 'Atualizando…';
       carregar(p, true).then(render, function (e) { mostrarEstado('erro', 'Não foi possível atualizar os dados.', e.message); });
