@@ -43,7 +43,8 @@ As regras abaixo foram conferidas contra a planilha: todas as contagens, percent
 
 - **Filtros**: Paciente, Médico (`medico_responsavel`), Status da Guia, Convênio, Procedimento (Regra A) e Etapas.
 - **Cartões**: Aut. em Processo (etapa 7), Realizados (83), Aut. Aprovada (13), Enca. para Enfermagem (17), Agendado (89), Autorização Negada (8), Resolver (92), Desistências (93) e Faturamento (106).
-- **Barras**: "Outros" soma Autorização Pendente (3) e Pendente Estimulação (105).
+- **Etapas consideradas**: só a partir de "Autorização em Processo". Autorização Pendente (3) e Pendente Estimulação (105) ficam de fora de todo o relatório.
+- **Barras**: "Outros" só aparece se surgir uma etapa nova ainda sem rótulo.
 - **Tabela 1**: Nome, Convênio, Procedimento, Médico, Guia e Etapa do CRM, com 1000 linhas por página.
 - **Tabela 2**: as mesmas colunas, mais Data da Realização e Record Count. Mostra só os registros com data de realização válida.
 - **Pizzas**: Procedimento, Médico e Convênio.
@@ -78,6 +79,7 @@ O nome vem do CRM (`/int/getTags`, com cache de 5 minutos) a partir da primeira 
 ## Diferenças em relação ao Looker
 
 - **Totais**: a planilha nunca apaga linhas, então o Looker continua contando oportunidades que saíram do funil. Como lê o CRM, a extensão mostra a situação atual. Por exemplo, a Interna tinha 3114 linhas na planilha e 2971 no CRM.
+- **Interna**: no Looker, a barra "Outros" somava as etapas pendentes. Na extensão, elas não entram no relatório.
 - **Clínica**: no Looker, a barra da etapa "Orçamento Negado" aparece rotulada como "Outros", embora o cartão use o nome certo. Na extensão, a barra se chama "Orçamento Negado".
 - **Externa, tabela 2**: no Looker ela mostra todas as etapas como "Outros" e a data como null. Na extensão, ela mostra a etapa e a data de realização reais.
 - **Clínica**: a pizza do Looker se chama "cirurgiao por Quantidade". Na extensão, o título é "Cirurgião por Quantidade".

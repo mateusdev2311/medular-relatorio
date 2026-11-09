@@ -124,6 +124,15 @@ describe('rotas da extensão', () => {
     await app.close();
   });
 
+  it('deixa de fora da Autorização Interna as etapas antes de Em Processo', async () => {
+    const lista: Registro[] = [3, 105, 7, 83].map((fkStage, i) => ({ title: `P${i}`, fkStage, createdAt: '2026-10-01T12:00:00.000Z', tags: [7], formsdata: {} }));
+    const { app } = await montarApp('segredo', undefined, lista);
+    const r = await app.inject({ method: 'GET', url: '/extensao/dados/interna', headers: { authorization: 'Bearer segredo' } });
+    assert.deepEqual(r.json().linhas.map((l: { etapa: number }) => l.etapa), [7, 83]);
+    assert.equal(r.json().total, 2);
+    await app.close();
+  });
+
   it('continua respondendo quando o CRM não entrega as etiquetas', async () => {
     const lista: Registro[] = [{ title: 'A', fkStage: 98, createdAt: '2026-10-01T12:00:00.000Z', tags: [44], formsdata: {} }];
     const { app } = await montarApp('segredo', async () => { throw new Error('fora do ar'); }, lista);

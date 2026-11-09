@@ -101,7 +101,8 @@ export function registrarExtensao(app: FastifyInstance, op: OpcoesExtensao): boo
     const inicio = Date.now();
     const nomes = buscaDeNomes(await obterTags(forcar));
     // O array do CRM não é guardado: só as linhas enxutas ficam no cache.
-    const linhas = (await op.buscar(p.pipelineId)).map((r) => p.linha(r, nomes));
+    const ocultas = new Set(p.etapasOcultas ?? []);
+    const linhas = (await op.buscar(p.pipelineId)).filter((r) => !ocultas.has(Number(r.fkStage))).map((r) => p.linha(r, nomes));
     const json = JSON.stringify({ pagina: id, geradoEm: new Date().toISOString(), total: linhas.length, linhas });
     app.log.info({ pagina: id, linhas: linhas.length, bytes: json.length, duracaoMs: Date.now() - inicio }, 'dados da extensão gerados');
     return { em: Date.now(), json, gzip: gzipSync(json) };

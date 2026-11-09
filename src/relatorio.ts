@@ -25,6 +25,8 @@ export interface PaginaRelatorio {
   /** Identificador usado na rota /extensao/dados/:pagina. */
   id: string;
   pipelineId: number;
+  /** Etapas do CRM que não entram no relatório (nem em filtros, tabelas ou gráficos). */
+  etapasOcultas?: readonly number[];
   linha(r: Registro, nomes?: BuscaNome): LinhaRelatorio;
 }
 
@@ -80,6 +82,8 @@ export const PAGINAS_RELATORIO: readonly PaginaRelatorio[] = [
   {
     id: 'interna',
     pipelineId: 2,
+    // O relatório só considera a partir de "Autorização em Processo": ficam de fora Autorização Pendente e Pendente Estimulação.
+    etapasOcultas: [3, 105],
     linha(r, nomes) {
       const { f, ...b } = base(r);
       return { ...b, medico: txt(f['e12ff4f0']), statusGuia: txt(f['0abd3f10']), convenio: txt(f['903787f0']),
